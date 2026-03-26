@@ -5,115 +5,221 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Living World</title>
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── INK BAR ─────────────────────────────── */
+    .ink-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(242,232,208,0.95);
+      border-top: 1px solid var(--parchment-dkr);
+      flex-shrink: 0;
+    }
+    .ink-label {
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--ink-faded);
+      white-space: nowrap;
+    }
+    .ink-track {
+      flex: 1;
+      height: 10px;
+      background: var(--parchment-dkr);
+      border-radius: 5px;
+      overflow: hidden;
+      border: 1px solid var(--border-ornate);
+    }
+    #ink-fill {
+      height: 100%;
+      background: linear-gradient(to right, #3a6a3a, #6aaa6a);
+      border-radius: 5px;
+      transition: width 0.3s ease;
+    }
+    #ink-count {
+      font-family: 'Cinzel', serif;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink);
+      min-width: 28px;
+      text-align: right;
+    }
+    .btn-ink {
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 5px 14px;
+      border: 1px solid #3a6a3a;
+      background: rgba(58,106,58,0.1);
+      color: #2a5a2a;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-ink.active {
+      background: #3a6a3a;
+      color: #f2e8d0;
+      box-shadow: 0 0 10px rgba(58,106,58,0.4);
+    }
+    .btn-ink:hover { background: rgba(58,106,58,0.25); }
+    .btn-ink.active:hover { background: #2a5a2a; }
+
+    .btn-decree {
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 5px 12px;
+      border: 1px solid var(--gold);
+      background: rgba(184,134,11,0.1);
+      color: var(--gold);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-decree:hover { background: rgba(184,134,11,0.25); }
+
+    /* ── UNITS PANEL ─────────────────────────── */
+    .unit-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--parchment-dkr);
+      background: rgba(255,255,255,0.3);
+      cursor: pointer;
+      margin-bottom: 6px;
+      transition: all 0.2s;
+      width: 100%;
+      text-align: left;
+    }
+    .unit-btn:hover {
+      background: rgba(255,255,255,0.6);
+      border-color: var(--gold);
+    }
+    .unit-btn-icon { font-size: 18px; }
+    .unit-btn-info { flex: 1; }
+    .unit-btn-name {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      color: var(--ink);
+      display: block;
+    }
+    .unit-btn-cost {
+      font-size: 10px;
+      font-style: italic;
+      color: var(--ink-light);
+    }
+
+    /* Terrain legend */
+    .terrain-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px 6px;
+    }
+    .terrain-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: var(--ink-faded);
+    }
+    .terrain-swatch {
+      width: 10px; height: 10px;
+      border-radius: 1px;
+      flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+  </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════
-     SCREEN 1 — TITLE
-══════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════
+     TITLE SCREEN
+══════════════════════════════════════════ -->
 <div class="screen" id="screen-title">
   <div class="title-paper fade-in">
     <div class="corner-ornament tr"></div>
     <div class="corner-ornament bl"></div>
-
     <div class="game-title">LIVING WORLD</div>
     <div class="game-subtitle">A Grand Strategy of Civilization</div>
-
     <div class="title-divider"></div>
-
     <p class="title-flavor">
       From a single hearth fire, an empire may be born —<br>
       or consumed by the very people who built it.
     </p>
-
-    <button class="btn-primary" onclick="showCreateScreen()">
-      Begin a New Civilization
-    </button>
-
+    <button class="btn-primary" onclick="showCreateScreen()">Begin a New Civilization</button>
     <div class="title-divider" style="margin-top:28px;margin-bottom:12px;"></div>
-    <div style="font-size:11px;font-style:italic;color:var(--ink-light);">
-      Phase I — World &amp; Nation Foundations
-    </div>
+    <div style="font-size:11px;font-style:italic;color:var(--ink-light);">Phase II — Expansion, Land & Resources</div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SCREEN 2 — NATION CREATION
-══════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════
+     NATION CREATION
+══════════════════════════════════════════ -->
 <div class="screen hidden" id="screen-create">
   <div class="create-paper fade-in">
     <div class="corner-ornament tr"></div>
     <div class="corner-ornament bl"></div>
-
     <div class="create-title">Found Your Nation</div>
     <div class="create-sub">From nothing, you will build everything.</div>
-    <div class="title-divider" style="margin-bottom:28px;"></div>
+    <div class="title-divider" style="margin-bottom:24px;"></div>
 
-    <!-- Nation name -->
     <div class="field-group">
       <label class="field-label" for="input-nation-name">Name of Your Nation</label>
       <input class="text-input" id="input-nation-name" type="text"
-             placeholder="e.g. The Kingdom of Valdris…" maxlength="40"
-             oninput="updatePreview()">
+             placeholder="e.g. The Kingdom of Valdris…" maxlength="40" oninput="updatePreview()">
     </div>
-
-    <!-- Capital city name -->
     <div class="field-group">
       <label class="field-label" for="input-capital-name">Name of Your Capital City</label>
       <input class="text-input" id="input-capital-name" type="text"
-             placeholder="e.g. Valdrimoor…" maxlength="30"
-             oninput="updatePreview()">
+             placeholder="e.g. Valdrimoor…" maxlength="30" oninput="updatePreview()">
     </div>
 
-    <!-- Government type -->
+    <!-- Government -->
     <div class="field-group">
       <label class="field-label">Form of Government</label>
-      <div class="gov-grid" id="gov-grid">
-
+      <div class="gov-grid">
         <div class="gov-card" id="gov-tribal" onclick="selectGov('tribal')">
           <span class="gov-icon">🪶</span>
           <div class="gov-name">Tribal</div>
-          <div class="gov-desc">A union of clans ruled by tradition and the strength of the chieftain.</div>
+          <div class="gov-desc">Clans ruled by tradition. Expands aggressively every turn automatically.</div>
           <div class="gov-stats">
             <div class="gov-stat buff">+30% Expansion</div>
-            <div class="gov-stat buff">+20% Military Morale</div>
+            <div class="gov-stat buff">18 Ink / Turn</div>
             <div class="gov-stat debuff">-30% Gold Income</div>
-            <div class="gov-stat debuff">4 City Limit</div>
+            <div class="gov-stat debuff">Unused ink auto-spreads</div>
           </div>
         </div>
-
         <div class="gov-card" id="gov-kingship" onclick="selectGov('kingship')">
           <span class="gov-icon">👑</span>
           <div class="gov-name">Kingship</div>
-          <div class="gov-desc">A realm ruled by divine mandate of a sovereign. Power is absolute and loyalty expected.</div>
+          <div class="gov-desc">A sovereign monarch rules. Expansion only via Royal Decree (costs gold).</div>
           <div class="gov-stats">
             <div class="gov-stat buff">+25% Gold Income</div>
             <div class="gov-stat buff">+20% Stability</div>
-            <div class="gov-stat debuff">-25% Research</div>
-            <div class="gov-stat debuff">Succession Risk</div>
+            <div class="gov-stat debuff">No auto-expansion</div>
+            <div class="gov-stat debuff">Decree costs 40 gold</div>
           </div>
         </div>
-
         <div class="gov-card" id="gov-polyarchy" onclick="selectGov('polyarchy')">
           <span class="gov-icon">⚖️</span>
           <div class="gov-name">Simple Polyarchy</div>
-          <div class="gov-desc">A council of elders or merchant lords share power through debate and consensus.</div>
+          <div class="gov-desc">A council shares power. Moderate ink that saves up across turns.</div>
           <div class="gov-stats">
             <div class="gov-stat buff">+40% Trade Income</div>
-            <div class="gov-stat buff">+30% Research</div>
+            <div class="gov-stat buff">Ink banks up to 30</div>
             <div class="gov-stat debuff">-20% Military</div>
             <div class="gov-stat debuff">-25% Expansion</div>
           </div>
         </div>
-
       </div>
     </div>
 
-    <!-- Nation colors / flag -->
+    <!-- Flag colors -->
     <div class="field-group flag-section">
-      <label class="field-label">Nation Colors (Flag)</label>
+      <label class="field-label">Nation Colors</label>
       <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
-
         <div>
           <div style="font-size:10px;color:var(--ink-light);margin-bottom:6px;font-style:italic;">Primary</div>
           <div class="color-row" id="colors-primary"></div>
@@ -126,13 +232,10 @@
           <div style="font-size:10px;color:var(--ink-light);margin-bottom:6px;font-style:italic;">Accent</div>
           <div class="color-row" id="colors-accent"></div>
         </div>
-
         <div style="margin-left:auto;">
           <div style="font-size:10px;color:var(--ink-light);margin-bottom:6px;font-style:italic;">Preview</div>
           <div class="flag-preview" id="flag-preview-big" style="width:80px;height:52px;">
-            <div class="flag-stripe"></div>
-            <div class="flag-stripe"></div>
-            <div class="flag-stripe"></div>
+            <div class="flag-stripe"></div><div class="flag-stripe"></div><div class="flag-stripe"></div>
           </div>
           <div id="nation-preview-name" style="font-family:'Cinzel',serif;font-size:11px;color:var(--ink-faded);margin-top:6px;text-align:center;max-width:80px;"></div>
         </div>
@@ -140,20 +243,16 @@
     </div>
 
     <div class="title-divider" style="margin-bottom:20px;"></div>
-
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <button class="btn-primary" style="background:transparent;color:var(--ink-faded);border-color:var(--parchment-dkr);font-size:12px;padding:10px 20px;"
-              onclick="showTitleScreen()">← Back</button>
-      <button class="btn-primary" id="btn-begin" onclick="beginGame()" style="opacity:0.4;pointer-events:none;">
-        Found Your Nation →
-      </button>
+      <button class="btn-primary" style="background:transparent;color:var(--ink-faded);border-color:var(--parchment-dkr);font-size:12px;padding:10px 20px;" onclick="showTitleScreen()">← Back</button>
+      <button class="btn-primary" id="btn-begin" onclick="beginGame()" style="opacity:0.4;pointer-events:none;">Found Your Nation →</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SCREEN 3 — MAIN GAME
-══════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════
+     MAIN GAME
+══════════════════════════════════════════ -->
 <div class="screen hidden" id="screen-game" style="flex-direction:column;">
 
   <!-- Top bar -->
@@ -167,35 +266,23 @@
       <div id="nation-name-display" style="font-family:'Cinzel',serif;font-size:14px;font-weight:700;color:var(--ink);letter-spacing:1px;">—</div>
       <div id="gov-display" style="font-size:10px;font-style:italic;color:var(--ink-light);">—</div>
     </div>
-
     <div class="topbar-sep"></div>
-
-    <div class="stat-chip">
-      <span class="icon">💰</span>
-      <span>Gold</span>
-      <span class="val" id="chip-gold">0</span>
-    </div>
-    <div class="stat-chip">
-      <span class="icon">🌾</span>
-      <span>Food</span>
-      <span class="val" id="chip-food">0</span>
-    </div>
-    <div class="stat-chip">
-      <span class="icon">👥</span>
-      <span>Pop</span>
-      <span class="val" id="chip-pop">0</span>
-    </div>
-    <div class="stat-chip">
-      <span class="icon">⚔️</span>
-      <span>Military</span>
-      <span class="val" id="chip-mil">0</span>
-    </div>
-
-    <div class="turn-info">
-      <span id="year-display">3000 BCE</span>
-    </div>
-
+    <div class="stat-chip"><span class="icon">💰</span><span>Gold</span><span class="val" id="chip-gold">0</span></div>
+    <div class="stat-chip"><span class="icon">🌾</span><span>Food</span><span class="val" id="chip-food">0</span></div>
+    <div class="stat-chip"><span class="icon">👥</span><span>Pop</span><span class="val" id="chip-pop">0</span></div>
+    <div class="stat-chip"><span class="icon">⚔️</span><span>Mil</span><span class="val" id="chip-mil">0</span></div>
+    <div class="stat-chip"><span class="icon">⚒️</span><span>Prod</span><span class="val" id="chip-prod">0</span></div>
+    <div class="turn-info"><span id="year-display">3000 BCE</span></div>
     <button class="btn-end-turn" onclick="handleEndTurn()">End Turn →</button>
+  </div>
+
+  <!-- Ink bar -->
+  <div class="ink-bar-wrap">
+    <span class="ink-label">🖋 EXPANSION INK</span>
+    <div class="ink-track"><div id="ink-fill" style="width:100%"></div></div>
+    <span id="ink-count">0</span>
+    <button class="btn-ink" id="btn-ink-toggle" onclick="toggleInkMode()">✏ Paint Borders</button>
+    <button class="btn-decree" id="btn-decree" onclick="Game.issueRoyalDecree()" style="display:none;">⚜ Royal Decree (40g)</button>
   </div>
 
   <!-- Body -->
@@ -208,55 +295,84 @@
 
     <!-- Right sidebar -->
     <div id="sidebar">
+
+      <!-- Empire health -->
       <div class="sb-section">
-        <div class="sb-title">Empire Health</div>
-        <div class="sb-stat">
-          <span>Stability</span>
-          <span class="sb-val" id="sb-stability">75%</span>
-        </div>
+        <div class="sb-title">Empire</div>
+        <div class="sb-stat"><span>Stability</span><span class="sb-val" id="sb-stability">75%</span></div>
         <div class="stability-bar-wrap">
           <div class="stability-bar-fill" id="stability-fill" style="width:75%"></div>
         </div>
-        <div class="sb-stat" style="margin-top:10px;">
-          <span>Cultural Unity</span>
-          <span class="sb-val" id="sb-unity">80%</span>
-        </div>
-        <div class="sb-stat">
-          <span>Cities</span>
-          <span class="sb-val" id="sb-cities">1</span>
-        </div>
-        <div class="sb-stat">
-          <span>Breakaways</span>
-          <span class="sb-val" id="sb-breakaway">0</span>
-        </div>
+        <div class="sb-stat" style="margin-top:8px;"><span>Cultural Unity</span><span class="sb-val" id="sb-unity">80%</span></div>
+        <div class="sb-stat"><span>Cities</span><span class="sb-val" id="sb-cities">1</span></div>
+        <div class="sb-stat"><span>Territory</span><span class="sb-val" id="sb-tiles">0</span> <span style="font-size:9px;color:var(--ink-light);">tiles</span></div>
+        <div class="sb-stat"><span>Breakaways</span><span class="sb-val" id="sb-breakaway">0</span></div>
       </div>
 
+      <!-- Income -->
       <div class="sb-section">
         <div class="sb-title">Income / Turn</div>
-        <div class="sb-stat">
-          <span>💰 Gold</span>
-          <span class="sb-val" id="sb-gold-inc">+0</span>
+        <div class="sb-stat"><span>💰 Gold</span><span class="sb-val" id="sb-gold-inc">+0</span></div>
+        <div class="sb-stat"><span>🌾 Food</span><span class="sb-val" id="sb-food-inc">+0</span></div>
+        <div class="sb-stat"><span>⚒️ Production</span><span class="sb-val" id="sb-prod-inc">+0</span></div>
+        <div class="sb-stat"><span>📜 Research</span><span class="sb-val" id="sb-research">0</span></div>
+      </div>
+
+      <!-- Resources -->
+      <div class="sb-section">
+        <div class="sb-title">Active Resources</div>
+        <div id="sb-resources"><span style="font-style:italic;color:var(--ink-light);font-size:11px;">No builders deployed</span></div>
+      </div>
+
+      <!-- Units -->
+      <div class="sb-section">
+        <div class="sb-title">Recruit Units</div>
+        <button class="unit-btn" onclick="Game.recruitUnit('trader')">
+          <span class="unit-btn-icon">🐪</span>
+          <div class="unit-btn-info">
+            <span class="unit-btn-name">Trader</span>
+            <span class="unit-btn-cost">Cost: 30 gold · Earns gold on routes</span>
+          </div>
+        </button>
+        <button class="unit-btn" onclick="Game.recruitUnit('builder')">
+          <span class="unit-btn-icon">🪚</span>
+          <div class="unit-btn-info">
+            <span class="unit-btn-name">Builder</span>
+            <span class="unit-btn-cost">Cost: 20 gold + 10 prod · Extracts resources</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Terrain legend -->
+      <div class="sb-section">
+        <div class="sb-title">Terrain</div>
+        <div class="terrain-grid">
+          <div class="terrain-item"><div class="terrain-swatch" style="background:#4a7a96"></div>Ocean</div>
+          <div class="terrain-item"><div class="terrain-swatch" style="background:#7ab8d0"></div>Coast</div>
+          <div class="terrain-item"><div class="terrain-swatch" style="background:#c4b86a"></div>Plains</div>
+          <div class="terrain-item"><div class="terrain-swatch" style="background:#5a8040"></div>Forest</div>
+          <div class="terrain-item"><div class="terrain-swatch" style="background:#a09060"></div>Hills</div>
+          <div class="terrain-item"><div class="terrain-swatch" style="background:#c8a040"></div>Desert</div>
+          <div class="terrain-item"><div class="terrain-swatch" style="background:#8aaa90"></div>Tundra</div>
+          <div class="terrain-item"><div class="terrain-swatch" style="background:#808888"></div>Mountain</div>
         </div>
-        <div class="sb-stat">
-          <span>🌾 Food</span>
-          <span class="sb-val" id="sb-food-inc">+0</span>
-        </div>
-        <div class="sb-stat">
-          <span>📜 Research</span>
-          <span class="sb-val" id="sb-research">0</span>
+        <div style="margin-top:8px;font-size:10px;font-style:italic;color:var(--ink-light);">
+          🪵 Timber · 🪨 Stone · ⬟ Iron · ◈ Copper
         </div>
       </div>
 
-      <div class="sb-section" style="flex:1;display:flex;flex-direction:column;min-height:0;padding-bottom:0;">
+      <!-- Chronicle -->
+      <div class="sb-section" style="flex:1;display:flex;flex-direction:column;min-height:120px;padding-bottom:0;">
         <div class="sb-title">Chronicle</div>
         <div id="event-log"></div>
       </div>
+
     </div>
   </div>
 
-  <!-- Bottom status bar -->
+  <!-- Status bar -->
   <div id="statusbar">
-    <span id="hover-info">Pan with mouse · Scroll to zoom</span>
+    <span id="hover-info">Pan with mouse · Scroll to zoom · Toggle Paint Borders to claim territory</span>
   </div>
 </div>
 
@@ -266,22 +382,18 @@
   <div id="tt-body"></div>
 </div>
 
-<!-- Toast notification -->
+<!-- Toast -->
 <div id="toast"></div>
 
-<!-- Scripts -->
 <script src="js/nations.js"></script>
 <script src="js/map.js"></script>
 <script src="js/game.js"></script>
 <script>
-// ─────────────────────────────────────────────
-// UI CONTROLLER
-// ─────────────────────────────────────────────
+// ── UI CONTROLLER ─────────────────────────────
+let selectedGov    = null;
+let selectedColors = ['#c0392b','#f1c40f','#2980b9'];
+let inkModeActive  = false;
 
-let selectedGov = null;
-let selectedColors = ['#c0392b', '#f1c40f', '#2980b9'];
-
-// ── Screen transitions ──
 function showTitleScreen() {
   document.getElementById('screen-title').classList.remove('hidden');
   document.getElementById('screen-create').classList.add('hidden');
@@ -293,42 +405,31 @@ function showCreateScreen() {
 }
 function showGameScreen() {
   document.getElementById('screen-create').classList.add('hidden');
-  document.getElementById('screen-game').classList.remove('hidden');
-  document.getElementById('screen-game').style.display = 'flex';
-
-  // Init map
-  MapEngine.init(
-    document.getElementById('map-canvas'),
-    document.getElementById('map-wrap')
-  );
-  window.addEventListener('resize', () => MapEngine.resize());
+  const gs = document.getElementById('screen-game');
+  gs.classList.remove('hidden');
+  gs.style.display = 'flex';
 }
 
-// ── Government selection ──
+// Government selection
 function selectGov(id) {
   selectedGov = id;
-  document.querySelectorAll('.gov-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById('gov-' + id).classList.add('selected');
+  document.querySelectorAll('.gov-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('gov-'+id).classList.add('selected');
   validateForm();
 }
 
-// ── Color pickers ──
-const FLAG_COLORS = [
-  '#c0392b','#e67e22','#f1c40f','#27ae60','#16a085',
-  '#2980b9','#8e44ad','#2c3e50','#7f8c8d','#1a1208','#ecf0f1','#795548'
-];
-
+// Color pickers
 function initColorPickers() {
   ['primary','secondary','accent'].forEach((slot, idx) => {
-    const wrap = document.getElementById('colors-' + slot);
+    const wrap = document.getElementById('colors-'+slot);
     wrap.innerHTML = '';
     FLAG_COLORS.forEach(color => {
       const sw = document.createElement('div');
-      sw.className = 'color-swatch' + (selectedColors[idx] === color ? ' selected' : '');
+      sw.className = 'color-swatch' + (selectedColors[idx]===color?' selected':'');
       sw.style.background = color;
       sw.onclick = () => {
         selectedColors[idx] = color;
-        document.querySelectorAll(`#colors-${slot} .color-swatch`).forEach(s => s.classList.remove('selected'));
+        document.querySelectorAll(`#colors-${slot} .color-swatch`).forEach(s=>s.classList.remove('selected'));
         sw.classList.add('selected');
         updatePreview();
       };
@@ -339,17 +440,10 @@ function initColorPickers() {
 }
 
 function updatePreview() {
-  const name   = document.getElementById('input-nation-name').value.trim();
-  const capital = document.getElementById('input-capital-name').value.trim();
-
-  // Flag preview
-  const preview = document.getElementById('flag-preview-big');
-  const stripes = preview.querySelectorAll('.flag-stripe');
-  stripes.forEach((s, i) => s.style.background = selectedColors[i]);
-
-  // Name preview
-  document.getElementById('nation-preview-name').textContent = name || '—';
-
+  const name = document.getElementById('input-nation-name').value.trim();
+  const fp   = document.getElementById('flag-preview-big');
+  fp.querySelectorAll('.flag-stripe').forEach((s,i)=>s.style.background=selectedColors[i]);
+  document.getElementById('nation-preview-name').textContent = name||'—';
   validateForm();
 }
 
@@ -357,54 +451,89 @@ function validateForm() {
   const name    = document.getElementById('input-nation-name').value.trim();
   const capital = document.getElementById('input-capital-name').value.trim();
   const btn     = document.getElementById('btn-begin');
-  const valid   = name.length > 0 && capital.length > 0 && selectedGov !== null;
-  btn.style.opacity = valid ? '1' : '0.4';
-  btn.style.pointerEvents = valid ? 'auto' : 'none';
+  const valid   = name.length>0 && capital.length>0 && selectedGov!==null;
+  btn.style.opacity      = valid?'1':'0.4';
+  btn.style.pointerEvents = valid?'auto':'none';
 }
 
-// ── Begin game ──
+// Begin game
 function beginGame() {
   const name    = document.getElementById('input-nation-name').value.trim();
   const capital = document.getElementById('input-capital-name').value.trim();
-  if (!name || !capital || !selectedGov) return;
+  if (!name||!capital||!selectedGov) return;
 
   showGameScreen();
 
-  // Small delay to let map init
   setTimeout(() => {
-    const nationColor = selectedColors[0];
-    MapEngine.placePlayerCity(capital, nationColor);
+    // Init map
+    MapEngine.init(document.getElementById('map-canvas'), document.getElementById('map-wrap'));
+    MapEngine.setPlayerColor(selectedColors[0]);
+    MapEngine.setPlayerGov(selectedGov);
+
+    // Wire ink painting
+    MapEngine.setOnTilePainted((tile, cost) => Game.handleTilePaint(tile, cost));
+
+    // Wire hover tooltip
+    MapEngine.setOnTileHover((tile, e) => {
+      const tt = document.getElementById('map-tooltip');
+      const hi = document.getElementById('hover-info');
+      if (tile) {
+        const resName = tile.resource ? ` · ${RESOURCES[tile.resource].icon} ${RESOURCES[tile.resource].name}` : '';
+        const owner   = tile.owner==='player' ? 'Your Territory' : 'Unclaimed';
+        hi.textContent = `${tile.land.name}${resName} · ${owner}`;
+        if (inkModeActive && tile.land.claimable && tile.owner!=='player') {
+          const cost = GOVERNMENTS[selectedGov].inkCosts[tile.land.id]??2;
+          tt.style.display = 'block';
+          tt.style.left    = (e.clientX+14)+'px';
+          tt.style.top     = (e.clientY-10)+'px';
+          document.getElementById('tt-name').textContent = tile.land.name + (tile.resource?' · '+RESOURCES[tile.resource].name:'');
+          document.getElementById('tt-body').innerHTML =
+            `<div class="tt-row">Ink cost: ${cost}</div>
+             <div class="tt-row">Food: +${tile.land.foodMod} · Gold: +${tile.land.goldMod}</div>
+             ${resName?`<div class="tt-row">${RESOURCES[tile.resource].effect}</div>`:''}`;
+        } else { tt.style.display='none'; }
+      } else {
+        tt.style.display='none';
+        hi.textContent = inkModeActive
+          ? '🖋 Paint Mode — click and drag to claim territory'
+          : 'Pan with mouse · Scroll to zoom · Toggle Paint Borders to expand';
+      }
+    });
+
+    window.addEventListener('resize', () => MapEngine.resize());
+
+    // Place capital & start game
+    MapEngine.placePlayerCapital(capital, selectedColors[0], selectedGov);
     Game.startGame(name, capital, selectedGov, selectedColors);
-    showToast('The age of ' + name + ' has begun.');
-  }, 100);
+    showToast('Your civilization begins. Toggle "Paint Borders" to expand!');
+  }, 80);
 }
 
-// ── End turn ──
+// Ink mode toggle
+function toggleInkMode() {
+  inkModeActive = !inkModeActive;
+  MapEngine.setInkMode(inkModeActive);
+  const btn = document.getElementById('btn-ink-toggle');
+  btn.classList.toggle('active', inkModeActive);
+  btn.textContent = inkModeActive ? '✏ Painting…' : '✏ Paint Borders';
+  const hi = document.getElementById('hover-info');
+  hi.textContent = inkModeActive
+    ? '🖋 Paint Mode active — click and drag on land to claim it'
+    : 'Paint mode off — drag to pan, scroll to zoom';
+}
+
+// End turn
 function handleEndTurn() {
+  // Turn off ink mode each turn
+  if (inkModeActive) toggleInkMode();
   Game.endTurn();
-  showToast('Year ' + formatYearDisplay());
+  showToast(formatYearDisplay());
 }
 
 function formatYearDisplay() {
   const s = Game.getState();
-  const y = s.year;
-  return y < 0 ? Math.abs(y) + ' BCE' : y + ' CE';
+  return s.year<0 ? Math.abs(s.year)+' BCE' : s.year+' CE';
 }
-
-// ── Toast ──
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
-}
-
-// ── Init color pickers on load (pre-warm) ──
-window.addEventListener('load', () => {
-  // Pre-select default colors
-  selectedColors = ['#c0392b', '#f1c40f', '#2980b9'];
-});
 </script>
-
 </body>
 </html>

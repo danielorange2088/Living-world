@@ -1,62 +1,43 @@
 // ─────────────────────────────────────────────────────────────
-// MAP ENGINE
-// Renders a real-world map using Natural Earth data approximated
-// as a painted canvas with territory overlays
+// MAP ENGINE v2 — Tile grid, land types, ink expansion system
 // ─────────────────────────────────────────────────────────────
-
 const MapEngine = (() => {
+
+  // ── CONFIG ────────────────────────────────────
+  const TILE = 18;          // px per tile
+  const COLS = 120;
+  const ROWS = 60;
+  const MAP_W = COLS * TILE;
+  const MAP_H = ROWS * TILE;
+
   let canvas, ctx, wrap;
-  let cam = { x: 0, y: 0, scale: 1, dragging: false, lastX: 0, lastY: 0 };
-  let mapImg = null;
-  let mapReady = false;
+  let cam = { x:0, y:0, scale:1, dragging:false, lx:0, ly:0 };
 
-  // Map logical dimensions (match SVG viewBox)
-  const MAP_W = 1800;
-  const MAP_H = 900;
+  // Tile grid: each cell = { land, resource, owner, hasBuilder, hasTrader }
+  let grid = [];
 
-  // Territories claimed: { id, cx, cy, radius, color, name, cityName }
-  let territories = [];
-  let playerTerritory = null;
-  let hoveredTerritory = null;
+  // Ink painting state
+  let inkMode   = false;
+  let inkPainting = false;
 
-  // Spawn points scattered across land masses (normalized 0-1 coords → pixel)
-  // These are approximate land-mass safe spawn locations
-  const LAND_SPAWNS = [
-    // North America
-    [0.14,0.28],[0.17,0.32],[0.20,0.38],[0.13,0.42],[0.22,0.45],
-    // South America
-    [0.24,0.55],[0.27,0.62],[0.22,0.58],[0.25,0.70],[0.28,0.65],
-    // Europe
-    [0.46,0.22],[0.48,0.26],[0.50,0.24],[0.45,0.28],[0.52,0.28],
-    [0.44,0.32],[0.49,0.30],[0.47,0.20],[0.54,0.22],
-    // Africa
-    [0.48,0.40],[0.50,0.48],[0.52,0.54],[0.46,0.46],[0.54,0.42],
-    [0.49,0.58],[0.51,0.62],[0.48,0.52],
-    // Middle East
-    [0.56,0.34],[0.58,0.36],[0.60,0.32],[0.57,0.30],
-    // Asia
-    [0.62,0.22],[0.65,0.26],[0.68,0.28],[0.72,0.30],[0.75,0.32],
-    [0.70,0.20],[0.78,0.26],[0.64,0.32],[0.80,0.22],[0.74,0.24],
-    [0.66,0.36],[0.70,0.38],[0.76,0.34],
-    // South Asia
-    [0.66,0.40],[0.68,0.44],[0.70,0.42],[0.72,0.40],
-    // Southeast Asia
-    [0.74,0.44],[0.76,0.42],[0.78,0.46],[0.80,0.44],
-    // Australia
-    [0.80,0.60],[0.84,0.58],[0.82,0.64],[0.78,0.62],[0.86,0.62],
-    // Russia / Siberia
-    [0.60,0.16],[0.65,0.14],[0.70,0.14],[0.75,0.16],[0.80,0.16],
-    // Central Asia
-    [0.62,0.28],[0.64,0.26],[0.66,0.24],
-  ];
+  // Callbacks set by game
+  let onTilePainted = null;  // (tile, cost) => void
+  let onTileHover   = null;  // (tile) => void
 
+  // Player color for painting
+  let playerColor = '#c0392b';
+  let playerGovId = 'tribal';
+
+  // ── INIT ──────────────────────────────────────
   function init(canvasEl, wrapEl) {
     canvas = canvasEl;
-    ctx = canvas.getContext('2d');
-    wrap = wrapEl;
+    ctx    = canvas.getContext('2d');
+    wrap   = wrapEl;
     resize();
-    loadMap();
+    generateGrid();
+    centerMap();
     bindEvents();
+    draw();
   }
 
   function resize() {
@@ -65,313 +46,408 @@ const MapEngine = (() => {
     draw();
   }
 
-  // ── Load the world map image ──
-  function loadMap() {
-    // Use a high-quality Natural Earth map from a public CDN
-    mapImg = new Image();
-    mapImg.crossOrigin = 'anonymous';
-
-    // We'll draw our own stylized parchment map programmatically
-    // since external images may not load. This gives us full control.
-    mapImg = null;
-    mapReady = true;
-    centerMap();
-    draw();
-  }
-
   function centerMap() {
-    cam.scale = Math.max(canvas.width / MAP_W, canvas.height / MAP_H) * 0.95;
+    cam.scale = Math.max(canvas.width / MAP_W, canvas.height / MAP_H) * 0.9;
     cam.x = (canvas.width  - MAP_W * cam.scale) / 2;
     cam.y = (canvas.height - MAP_H * cam.scale) / 2;
   }
 
-  // ── DRAW ──────────────────────────────────────
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // ── GRID GENERATION ───────────────────────────
+  function generateGrid() {
+    // Simple noise for terrain
+    const noise = makeNoise(COLS, ROWS, 42);
+    const tempN  = makeNoise(COLS, ROWS, 99);
 
+    grid = [];
+    for (let r = 0; r < ROWS; r++) {
+      grid[r] = [];
+      const lat = Math.abs((r / ROWS) - 0.5) * 2;
+      for (let c = 0; c < COLS; c++) {
+        const h = noise[r][c];
+        const t = 1 - lat * 0.85 - h * 0.2 + tempN[r][c] * 0.1;
+        let landId;
+
+        if (h < 0.32)       landId = 'ocean';
+        else if (h < 0.38)  landId = 'coast';
+        else if (h > 0.80)  landId = t < 0.3 ? 'mountain' : 'mountain';
+        else if (t < 0.22)  landId = 'tundra';
+        else if (t > 0.85 && h < 0.65) landId = 'desert';
+        else if (h > 0.65)  landId = 'hills';
+        else if (Math.random() < 0.38) landId = 'forest';
+        else                landId = 'plains';
+
+        grid[r][c] = {
+          r, c,
+          land: LAND_TYPES[landId],
+          resource: null,
+          owner: null,      // null = unclaimed, 'player' = player
+          hasBuilder: false,
+          hasTrader: false,
+        };
+      }
+    }
+
+    placeResources();
+  }
+
+  function makeNoise(cols, rows, seed) {
+    // Simple seeded value noise with smoothing
+    let s = seed;
+    const rng = () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s>>>0)/0xffffffff; };
+    const raw = Array.from({length:rows}, () => Array.from({length:cols}, rng));
+    const out = Array.from({length:rows}, () => new Array(cols).fill(0));
+    const r = 4;
+    for (let y=0;y<rows;y++) for (let x=0;x<cols;x++) {
+      let sum=0,cnt=0;
+      for (let dy=-r;dy<=r;dy++) for (let dx=-r;dx<=r;dx++) {
+        const ny=y+dy,nx=x+dx;
+        if (ny>=0&&ny<rows&&nx>=0&&nx<cols){sum+=raw[ny][nx];cnt++;}
+      }
+      out[y][x]=sum/cnt;
+    }
+    return out;
+  }
+
+  function placeResources() {
+    for (const [rid, res] of Object.entries(RESOURCES)) {
+      // Place several clusters
+      const attempts = Math.floor(COLS * ROWS * res.rarity / res.clusterMin);
+      for (let a = 0; a < attempts; a++) {
+        const cr = Math.floor(Math.random() * ROWS);
+        const cc = Math.floor(Math.random() * COLS);
+        const tile = grid[cr]?.[cc];
+        if (!tile || !res.spawnOn.includes(tile.land.id)) continue;
+
+        // Place cluster
+        const size = res.clusterMin + Math.floor(Math.random() * (res.clusterMax - res.clusterMin));
+        const visited = [[cr, cc]];
+        tile.resource = rid;
+        for (let i = 1; i < size; i++) {
+          const [pr, pc] = visited[Math.floor(Math.random() * visited.length)];
+          const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+          dirs.sort(() => Math.random()-0.5);
+          for (const [dr,dc] of dirs) {
+            const nr=pr+dr, nc=pc+dc;
+            if (nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&grid[nr][nc].resource===null
+                &&res.spawnOn.includes(grid[nr][nc].land.id)) {
+              grid[nr][nc].resource = rid;
+              visited.push([nr,nc]);
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ── PLAYER SPAWN ──────────────────────────────
+  // Safe land spawns (normalized coords)
+  const LAND_SPAWNS = [
+    [0.14,0.30],[0.17,0.35],[0.20,0.40],[0.13,0.44],[0.22,0.46],
+    [0.24,0.55],[0.27,0.62],[0.22,0.58],[0.25,0.68],
+    [0.46,0.24],[0.48,0.27],[0.50,0.25],[0.45,0.29],[0.52,0.28],
+    [0.44,0.33],[0.49,0.31],[0.47,0.22],[0.54,0.23],
+    [0.48,0.42],[0.50,0.50],[0.52,0.55],[0.46,0.47],[0.54,0.43],
+    [0.49,0.60],[0.51,0.64],[0.48,0.53],
+    [0.56,0.35],[0.58,0.37],[0.60,0.33],
+    [0.62,0.23],[0.65,0.27],[0.68,0.29],[0.72,0.31],[0.75,0.33],
+    [0.70,0.21],[0.78,0.27],[0.64,0.33],[0.80,0.23],[0.74,0.25],
+    [0.66,0.41],[0.68,0.45],[0.70,0.43],[0.72,0.41],
+    [0.74,0.45],[0.76,0.43],[0.78,0.47],
+    [0.80,0.61],[0.84,0.59],[0.82,0.65],[0.78,0.63],
+    [0.60,0.17],[0.65,0.15],[0.70,0.15],[0.75,0.17],
+    [0.62,0.29],[0.64,0.27],
+  ];
+
+  function placePlayerCapital(cityName, color, govId) {
+    playerColor = color;
+    playerGovId = govId;
+
+    // Pick a random land spawn and find nearest passable tile
+    let spawn = null;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const [nx, ny] = LAND_SPAWNS[Math.floor(Math.random() * LAND_SPAWNS.length)];
+      const r = Math.floor(ny * ROWS);
+      const c = Math.floor(nx * COLS);
+      if (grid[r]?.[c]?.land?.claimable) {
+        spawn = { r, c };
+        break;
+      }
+    }
+    if (!spawn) spawn = { r: 30, c: 60 };
+
+    // Claim starting tiles (3x3 around capital)
+    for (let dr=-2; dr<=2; dr++) for (let dc=-2; dc<=2; dc++) {
+      const nr=spawn.r+dr, nc=spawn.c+dc;
+      if (grid[nr]?.[nc]?.land?.claimable) grid[nr][nc].owner = 'player';
+    }
+    grid[spawn.r][spawn.c].isCapital = true;
+    grid[spawn.r][spawn.c].cityName  = cityName;
+
+    panTo(spawn.r, spawn.c);
+    draw();
+    return spawn;
+  }
+
+  function panTo(r, c) {
+    const tx = c * TILE + TILE/2;
+    const ty = r * TILE + TILE/2;
+    cam.x = canvas.width/2  - tx * cam.scale;
+    cam.y = canvas.height/2 - ty * cam.scale;
+    clampCam();
+  }
+
+  // ── INK PAINTING ──────────────────────────────
+  function setInkMode(active) {
+    inkMode = active;
+    wrap.style.cursor = active ? 'crosshair' : 'grab';
+  }
+
+  function getInkCostForTile(tile) {
+    if (!tile.land.claimable) return Infinity;
+    const gov = GOVERNMENTS[playerGovId];
+    return gov.inkCosts[tile.land.id] ?? 2;
+  }
+
+  function tryPaintTile(r, c) {
+    const tile = grid[r]?.[c];
+    if (!tile || tile.owner === 'player') return 0;
+    if (!tile.land.claimable) return 0;
+
+    // Must be adjacent to existing player territory
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+    const adjacent = dirs.some(([dr,dc]) => grid[r+dr]?.[c+dc]?.owner === 'player');
+    if (!adjacent) return 0;
+
+    const cost = getInkCostForTile(tile);
+    if (onTilePainted) onTilePainted(tile, cost);
+    return cost;
+  }
+
+  // Called by game when a tile is confirmed painted
+  function claimTile(r, c) {
+    if (grid[r]?.[c]) grid[r][c].owner = 'player';
+    draw();
+  }
+
+  // Auto-expand: claim tiles adjacent to player territory
+  function autoExpand(inkAmount) {
+    const candidates = [];
+    for (let r=0; r<ROWS; r++) for (let c=0; c<COLS; c++) {
+      if (grid[r][c].owner !== 'player') continue;
+      const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+      for (const [dr,dc] of dirs) {
+        const nr=r+dr,nc=c+dc;
+        if (grid[nr]?.[nc]?.land?.claimable && grid[nr][nc].owner !== 'player') {
+          candidates.push({r:nr,c:nc,cost:getInkCostForTile(grid[nr][nc])});
+        }
+      }
+    }
+    candidates.sort((a,b) => a.cost - b.cost);
+    let used = 0;
+    for (const t of candidates) {
+      if (used + t.cost > inkAmount) break;
+      grid[t.r][t.c].owner = 'player';
+      used += t.cost;
+    }
+    draw();
+    return used;
+  }
+
+  // Count player tiles
+  function getPlayerTileCount() {
+    let n = 0;
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) if (grid[r][c].owner==='player') n++;
+    return n;
+  }
+
+  // Count player resource tiles
+  function getPlayerResources() {
+    const res = {};
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+      const t = grid[r][c];
+      if (t.owner==='player' && t.resource && t.hasBuilder) {
+        res[t.resource] = (res[t.resource]||0) + 1;
+      }
+    }
+    return res;
+  }
+
+  // ── DRAWING ───────────────────────────────────
+  function draw() {
+    if (!canvas) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(cam.x, cam.y);
     ctx.scale(cam.scale, cam.scale);
 
-    drawParchmentMap();
-    drawTerritories();
+    drawTiles();
+    drawGrid();
+    drawResources();
     drawCities();
+    drawUnits();
+    drawBorders();
 
     ctx.restore();
   }
 
-  // ── PARCHMENT WORLD MAP ───────────────────────
-  // A stylized painted world map drawn on canvas
-  function drawParchmentMap() {
-    // Ocean background
-    const oceanGrad = ctx.createLinearGradient(0, 0, 0, MAP_H);
-    oceanGrad.addColorStop(0,   '#7ba7bc');
-    oceanGrad.addColorStop(0.5, '#6a96ab');
-    oceanGrad.addColorStop(1,   '#5a8599');
-    ctx.fillStyle = oceanGrad;
-    ctx.fillRect(0, 0, MAP_W, MAP_H);
+  function drawTiles() {
+    const sc = Math.max(0, Math.floor(-cam.x / (TILE*cam.scale)));
+    const ec = Math.min(COLS, Math.ceil((-cam.x + canvas.width)  / (TILE*cam.scale)) + 1);
+    const sr = Math.max(0, Math.floor(-cam.y / (TILE*cam.scale)));
+    const er = Math.min(ROWS, Math.ceil((-cam.y + canvas.height) / (TILE*cam.scale)) + 1);
 
-    // Ocean texture lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    for (let y = 20; y < MAP_H; y += 20) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(MAP_W, y);
-      ctx.stroke();
+    for (let r=sr; r<er; r++) {
+      for (let c=sc; c<ec; c++) {
+        const tile = grid[r][c];
+        const x = c * TILE, y = r * TILE;
+
+        // Base terrain color
+        ctx.fillStyle = tile.land.color;
+        ctx.fillRect(x, y, TILE, TILE);
+
+        // Player ownership overlay
+        if (tile.owner === 'player') {
+          ctx.fillStyle = playerColor + '30';
+          ctx.fillRect(x, y, TILE, TILE);
+        }
+      }
     }
+  }
 
-    // Draw land masses using paths
-    ctx.fillStyle = '#c8b882';
-    ctx.strokeStyle = '#a09060';
-    ctx.lineWidth = 1.5;
-
-    drawLandMasses();
-
-    // Vignette edge
-    const vignette = ctx.createRadialGradient(MAP_W/2, MAP_H/2, MAP_H*0.3, MAP_W/2, MAP_H/2, MAP_W*0.8);
-    vignette.addColorStop(0, 'rgba(0,0,0,0)');
-    vignette.addColorStop(1, 'rgba(0,0,0,0.35)');
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, MAP_W, MAP_H);
-
-    // Parchment grain overlay
-    ctx.fillStyle = 'rgba(242,232,208,0.08)';
-    for (let i = 0; i < 1200; i++) {
-      ctx.fillRect(
-        Math.random() * MAP_W,
-        Math.random() * MAP_H,
-        Math.random() * 3 + 1,
-        Math.random() * 2 + 1
-      );
+  function drawGrid() {
+    // Only draw grid lines at higher zoom
+    if (cam.scale < 1.2) return;
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 0.5;
+    const sc = Math.max(0, Math.floor(-cam.x / (TILE*cam.scale)));
+    const ec = Math.min(COLS, Math.ceil((-cam.x + canvas.width)  / (TILE*cam.scale)) + 1);
+    const sr = Math.max(0, Math.floor(-cam.y / (TILE*cam.scale)));
+    const er = Math.min(ROWS, Math.ceil((-cam.y + canvas.height) / (TILE*cam.scale)) + 1);
+    for (let r=sr; r<er; r++) {
+      for (let c=sc; c<ec; c++) {
+        ctx.strokeRect(c*TILE, r*TILE, TILE, TILE);
+      }
     }
+  }
 
-    // Map border
-    ctx.strokeStyle = '#8b6914';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(2, 2, MAP_W-4, MAP_H-4);
-    ctx.strokeStyle = 'rgba(184,134,11,0.3)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(8, 8, MAP_W-16, MAP_H-16);
-
-    // Cardinal direction labels
-    ctx.fillStyle = 'rgba(90,70,30,0.5)';
-    ctx.font = 'italic 18px "IM Fell English", serif';
+  function drawResources() {
+    if (cam.scale < 0.8) return;
+    const fontSize = Math.max(8, Math.min(14, TILE * 0.65));
+    ctx.font = `${fontSize}px serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('NORTH', MAP_W/2, 24);
-    ctx.fillText('SOUTH', MAP_W/2, MAP_H - 8);
-    ctx.textAlign = 'left';
-    ctx.save();
-    ctx.translate(18, MAP_H/2);
-    ctx.rotate(-Math.PI/2);
-    ctx.fillText('WEST', 0, 0);
-    ctx.restore();
-    ctx.save();
-    ctx.translate(MAP_W - 12, MAP_H/2);
-    ctx.rotate(Math.PI/2);
-    ctx.fillText('EAST', 0, 0);
-    ctx.restore();
-  }
-
-  function drawLandMasses() {
-    // Each land mass is drawn as a filled shape
-    // Approximate world continents as bezier paths
-    const land = getLandPaths();
-    for (const path of land) {
-      ctx.beginPath();
-      const pts = path;
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let i = 1; i < pts.length - 2; i++) {
-        const xc = (pts[i][0] + pts[i+1][0]) / 2;
-        const yc = (pts[i][1] + pts[i+1][1]) / 2;
-        ctx.quadraticCurveTo(pts[i][0], pts[i][1], xc, yc);
-      }
-      ctx.quadraticCurveTo(pts[pts.length-2][0], pts[pts.length-2][1], pts[pts.length-1][0], pts[pts.length-1][1]);
-      ctx.closePath();
-
-      // Land fill with slight variation
-      const grad = ctx.createLinearGradient(0, 0, 0, MAP_H);
-      grad.addColorStop(0,   '#d4c494');
-      grad.addColorStop(0.5, '#c8b882');
-      grad.addColorStop(1,   '#b8a870');
-      ctx.fillStyle = grad;
-      ctx.fill();
-      ctx.strokeStyle = '#9a8850';
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-    }
-  }
-
-  function getLandPaths() {
-    // Approximate continent outlines in MAP_W x MAP_H space
-    // Using simplified polygon points
-    const W = MAP_W, H = MAP_H;
-    return [
-      // North America
-      [[W*.10,H*.10],[W*.18,H*.08],[W*.26,H*.12],[W*.30,H*.18],[W*.28,H*.28],
-       [W*.24,H*.38],[W*.20,H*.50],[W*.18,H*.55],[W*.14,H*.48],[W*.10,H*.40],
-       [W*.08,H*.32],[W*.09,H*.22],[W*.10,H*.10]],
-
-      // Greenland
-      [[W*.22,H*.04],[W*.28,H*.03],[W*.32,H*.06],[W*.30,H*.14],[W*.24,H*.15],[W*.20,H*.10],[W*.22,H*.04]],
-
-      // South America
-      [[W*.20,H*.52],[W*.26,H*.50],[W*.32,H*.52],[W*.34,H*.60],[W*.32,H*.72],
-       [W*.28,H*.82],[W*.24,H*.88],[W*.20,H*.82],[W*.18,H*.70],[W*.18,H*.60],[W*.20,H*.52]],
-
-      // Europe
-      [[W*.42,H*.12],[W*.50,H*.10],[W*.56,H*.14],[W*.58,H*.20],[W*.54,H*.26],
-       [W*.50,H*.32],[W*.46,H*.34],[W*.42,H*.30],[W*.40,H*.24],[W*.42,H*.12]],
-
-      // Scandinavia bump
-      [[W*.46,H*.08],[W*.50,H*.06],[W*.52,H*.10],[W*.50,H*.16],[W*.46,H*.14],[W*.46,H*.08]],
-
-      // Africa
-      [[W*.44,H*.32],[W*.52,H*.30],[W*.58,H*.34],[W*.62,H*.42],[W*.60,H*.54],
-       [W*.56,H*.64],[W*.52,H*.72],[W*.48,H*.74],[W*.44,H*.68],[W*.42,H*.56],
-       [W*.42,H*.44],[W*.44,H*.32]],
-
-      // Madagascar
-      [[W*.58,H*.56],[W*.60,H*.54],[W*.62,H*.60],[W*.60,H*.66],[W*.57,H*.64],[W*.58,H*.56]],
-
-      // Asia (main)
-      [[W*.56,H*.14],[W*.68,H*.10],[W*.80,H*.12],[W*.90,H*.16],[W*.94,H*.24],
-       [W*.90,H*.32],[W*.84,H*.38],[W*.78,H*.44],[W*.72,H*.46],[W*.66,H*.44],
-       [W*.62,H*.38],[W*.58,H*.30],[W*.56,H*.22],[W*.56,H*.14]],
-
-      // Indian subcontinent
-      [[W*.62,H*.38],[W*.68,H*.38],[W*.72,H*.42],[W*.70,H*.52],[W*.66,H*.54],[W*.62,H*.48],[W*.62,H*.38]],
-
-      // Southeast Asia peninsula
-      [[W*.72,H*.44],[W*.76,H*.44],[W*.78,H*.52],[W*.74,H*.58],[W*.70,H*.54],[W*.72,H*.44]],
-
-      // Indonesia (simplified)
-      [[W*.76,H*.52],[W*.82,H*.50],[W*.86,H*.54],[W*.84,H*.58],[W*.78,H*.58],[W*.76,H*.52]],
-
-      // Japan
-      [[W*.86,H*.24],[W*.88,H*.22],[W*.90,H*.26],[W*.88,H*.30],[W*.86,H*.28],[W*.86,H*.24]],
-
-      // Australia
-      [[W*.76,H*.56],[W*.84,H*.54],[W*.92,H*.58],[W*.94,H*.66],[W*.88,H*.74],
-       [W*.80,H*.76],[W*.74,H*.70],[W*.72,H*.62],[W*.76,H*.56]],
-
-      // New Zealand (tiny)
-      [[W*.94,H*.72],[W*.96,H*.70],[W*.97,H*.74],[W*.95,H*.76],[W*.94,H*.72]],
-
-      // UK / British Isles
-      [[W*.43,H*.14],[W*.45,H*.12],[W*.46,H*.16],[W*.44,H*.18],[W*.43,H*.14]],
-
-      // Iceland
-      [[W*.36,H*.10],[W*.40,H*.09],[W*.42,H*.12],[W*.39,H*.14],[W*.36,H*.12],[W*.36,H*.10]],
-    ];
-  }
-
-  // ── TERRITORIES ───────────────────────────────
-  function drawTerritories() {
-    for (const t of territories) {
-      const isPlayer = t.isPlayer;
-      const isHovered = (hoveredTerritory && hoveredTerritory.id === t.id);
-
-      // Zone of control circle
-      ctx.beginPath();
-      ctx.arc(t.cx, t.cy, t.radius, 0, Math.PI * 2);
-      ctx.fillStyle = t.color + (isPlayer ? '50' : '35');
-      ctx.fill();
-
-      ctx.strokeStyle = t.color + (isPlayer ? 'cc' : '88');
-      ctx.lineWidth = isPlayer ? 2.5 : 1.5;
-      ctx.setLineDash(isPlayer ? [] : [6, 4]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      if (isHovered) {
-        ctx.beginPath();
-        ctx.arc(t.cx, t.cy, t.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255,255,200,0.6)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
+    ctx.textBaseline = 'middle';
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+      const t = grid[r][c];
+      if (!t.resource) continue;
+      const res = RESOURCES[t.resource];
+      ctx.fillText(res.icon, c*TILE + TILE/2, r*TILE + TILE/2);
     }
   }
 
   function drawCities() {
-    for (const t of territories) {
-      const isPlayer = t.isPlayer;
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+      const t = grid[r][c];
+      if (!t.cityName) continue;
+      const x = c*TILE + TILE/2;
+      const y = r*TILE + TILE/2;
 
       // City dot
       ctx.beginPath();
-      ctx.arc(t.cx, t.cy, isPlayer ? 7 : 5, 0, Math.PI * 2);
-      ctx.fillStyle = isPlayer ? '#f2e8d0' : t.color;
+      ctx.arc(x, y, TILE*0.35, 0, Math.PI*2);
+      ctx.fillStyle = '#f2e8d0';
       ctx.fill();
-      ctx.strokeStyle = t.color;
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = playerColor;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      if (isPlayer) {
-        // Star marker for player capital
-        drawStar(t.cx, t.cy, 9, 4, 5);
-      }
+      // Star
+      if (t.isCapital) drawStar(x, y, TILE*0.28, TILE*0.14, 5);
 
-      // City name label
-      ctx.fillStyle = isPlayer ? '#1a1208' : 'rgba(26,18,8,0.8)';
-      ctx.font = `${isPlayer ? 'bold ' : ''}${isPlayer ? 12 : 10}px "Cinzel", serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(t.cityName, t.cx, t.cy + (isPlayer ? 22 : 18));
+      // Label
+      if (cam.scale >= 1.0) {
+        ctx.fillStyle = '#1a1208';
+        ctx.font = `bold ${Math.max(7, TILE*0.55)}px "Cinzel", serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(t.cityName, x, y + TILE*0.45);
+      }
     }
   }
 
-  function drawStar(cx, cy, outerR, innerR, points) {
+  function drawUnits() {
+    if (cam.scale < 0.9) return;
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+      const t = grid[r][c];
+      if (t.hasBuilder) {
+        ctx.font = `${TILE*0.6}px serif`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('🪚', c*TILE + TILE - 1, r*TILE + TILE - 1);
+      }
+      if (t.hasTrader) {
+        ctx.font = `${TILE*0.6}px serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('🐪', c*TILE + 1, r*TILE + TILE - 1);
+      }
+    }
+  }
+
+  function drawBorders() {
+    ctx.lineWidth = 1.8;
+    for (let r=0;r<ROWS;r++) {
+      for (let c=0;c<COLS;c++) {
+        const t = grid[r][c];
+        if (t.owner !== 'player') continue;
+        const x = c*TILE, y = r*TILE;
+
+        // Draw border on edges that face non-player tiles
+        const edges = [
+          { dr:-1, dc:0, x1:x, y1:y, x2:x+TILE, y2:y },
+          { dr:1,  dc:0, x1:x, y1:y+TILE, x2:x+TILE, y2:y+TILE },
+          { dr:0,  dc:-1,x1:x, y1:y, x2:x, y2:y+TILE },
+          { dr:0,  dc:1, x1:x+TILE, y1:y, x2:x+TILE, y2:y+TILE },
+        ];
+        for (const e of edges) {
+          const nb = grid[r+e.dr]?.[c+e.dc];
+          if (!nb || nb.owner !== 'player') {
+            ctx.strokeStyle = playerColor + 'cc';
+            ctx.beginPath();
+            ctx.moveTo(e.x1, e.y1);
+            ctx.lineTo(e.x2, e.y2);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+  }
+
+  function drawStar(cx, cy, outerR, innerR, pts) {
     ctx.beginPath();
-    for (let i = 0; i < points * 2; i++) {
-      const r = i % 2 === 0 ? outerR : innerR;
-      const angle = (i * Math.PI) / points - Math.PI / 2;
-      const x = cx + r * Math.cos(angle);
-      const y = cy + r * Math.sin(angle);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    for (let i=0;i<pts*2;i++) {
+      const r = i%2===0?outerR:innerR;
+      const a = (i*Math.PI)/pts - Math.PI/2;
+      i===0?ctx.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a)):ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
     }
     ctx.closePath();
     ctx.fillStyle = '#d4a017';
     ctx.fill();
     ctx.strokeStyle = '#1a1208';
-    ctx.lineWidth = 0.8;
+    ctx.lineWidth = 0.5;
     ctx.stroke();
   }
 
-  // ── SPAWN POINT ───────────────────────────────
-  function getRandomSpawn() {
-    const idx = Math.floor(Math.random() * LAND_SPAWNS.length);
-    const [nx, ny] = LAND_SPAWNS[idx];
-    return { cx: nx * MAP_W, cy: ny * MAP_H };
+  // ── CAMERA & INPUT ────────────────────────────
+  function screenToTile(sx, sy) {
+    const mx = (sx - cam.x) / cam.scale;
+    const my = (sy - cam.y) / cam.scale;
+    const c  = Math.floor(mx / TILE);
+    const r  = Math.floor(my / TILE);
+    if (r>=0&&r<ROWS&&c>=0&&c<COLS) return grid[r][c];
+    return null;
   }
 
-  function placePlayerCity(cityName, nationColor) {
-    const spawn = getRandomSpawn();
-    const territory = {
-      id: 'player',
-      isPlayer: true,
-      cx: spawn.cx,
-      cy: spawn.cy,
-      radius: 60,
-      color: nationColor,
-      cityName: cityName,
-    };
-    territories = territories.filter(t => !t.isPlayer);
-    territories.push(territory);
-    playerTerritory = territory;
-
-    // Pan camera to center on spawn
-    panToPoint(spawn.cx, spawn.cy);
-    draw();
-    return spawn;
-  }
-
-  function panToPoint(mapX, mapY) {
-    cam.x = canvas.width  / 2 - mapX * cam.scale;
-    cam.y = canvas.height / 2 - mapY * cam.scale;
-    clampCam();
-  }
-
-  // ── CAMERA / INPUT ────────────────────────────
   function clampCam() {
     const minX = canvas.width  - MAP_W * cam.scale - 20;
     const minY = canvas.height - MAP_H * cam.scale - 20;
@@ -379,47 +455,45 @@ const MapEngine = (() => {
     cam.y = Math.max(minY, Math.min(20, cam.y));
   }
 
-  function screenToMap(sx, sy) {
-    return {
-      x: (sx - cam.x) / cam.scale,
-      y: (sy - cam.y) / cam.scale,
-    };
-  }
-
   function bindEvents() {
     wrap.addEventListener('mousedown', e => {
-      cam.dragging = true;
-      cam.lastX = e.clientX;
-      cam.lastY = e.clientY;
+      if (inkMode) {
+        inkPainting = true;
+        const rect = wrap.getBoundingClientRect();
+        const t = screenToTile(e.clientX - rect.left, e.clientY - rect.top);
+        if (t) tryPaintTile(t.r, t.c);
+      } else {
+        cam.dragging = true;
+        cam.lx = e.clientX; cam.ly = e.clientY;
+      }
     });
 
-    window.addEventListener('mouseup', () => { cam.dragging = false; });
+    window.addEventListener('mouseup', () => {
+      cam.dragging = false;
+      inkPainting = false;
+    });
 
     window.addEventListener('mousemove', e => {
-      if (cam.dragging) {
-        cam.x += e.clientX - cam.lastX;
-        cam.y += e.clientY - cam.lastY;
-        cam.lastX = e.clientX;
-        cam.lastY = e.clientY;
+      const rect = wrap.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+
+      if (cam.dragging && !inkMode) {
+        cam.x += e.clientX - cam.lx;
+        cam.y += e.clientY - cam.ly;
+        cam.lx = e.clientX; cam.ly = e.clientY;
         clampCam();
         draw();
       }
 
-      // Hover detection
-      const rect = wrap.getBoundingClientRect();
-      const mp = screenToMap(e.clientX - rect.left, e.clientY - rect.top);
-      let found = null;
-      for (const t of territories) {
-        const dx = mp.x - t.cx, dy = mp.y - t.cy;
-        if (Math.sqrt(dx*dx + dy*dy) < t.radius) { found = t; break; }
+      if (inkMode && inkPainting) {
+        const t = screenToTile(sx, sy);
+        if (t) tryPaintTile(t.r, t.c);
       }
-      if (found !== hoveredTerritory) {
-        hoveredTerritory = found;
-        draw();
-        updateHoverInfo(found, e);
-      } else if (found) {
-        updateHoverInfo(found, e);
-      }
+
+      // Hover info
+      const t = screenToTile(sx, sy);
+      if (onTileHover) onTileHover(t, e);
     });
 
     wrap.addEventListener('wheel', e => {
@@ -428,39 +502,32 @@ const MapEngine = (() => {
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       const delta = e.deltaY > 0 ? 0.88 : 1.14;
-      const newScale = Math.max(0.5, Math.min(4, cam.scale * delta));
-      cam.x = mx - (mx - cam.x) * (newScale / cam.scale);
-      cam.y = my - (my - cam.y) * (newScale / cam.scale);
-      cam.scale = newScale;
+      const ns = Math.max(0.4, Math.min(5, cam.scale * delta));
+      cam.x = mx - (mx - cam.x) * (ns / cam.scale);
+      cam.y = my - (my - cam.y) * (ns / cam.scale);
+      cam.scale = ns;
       clampCam();
       draw();
-    }, { passive: false });
+    }, { passive:false });
 
     wrap.addEventListener('mouseleave', () => {
-      hoveredTerritory = null;
-      draw();
-      document.getElementById('map-tooltip').style.display = 'none';
-      document.getElementById('hover-info').textContent = 'Pan with mouse · Scroll to zoom';
+      inkPainting = false;
+      if (onTileHover) onTileHover(null, null);
     });
   }
 
-  function updateHoverInfo(territory, e) {
-    const tooltip = document.getElementById('map-tooltip');
-    const hoverInfo = document.getElementById('hover-info');
-    if (territory) {
-      tooltip.style.display = 'block';
-      tooltip.style.left = (e.clientX + 16) + 'px';
-      tooltip.style.top  = (e.clientY - 10) + 'px';
-      document.getElementById('tt-name').textContent = territory.cityName;
-      document.getElementById('tt-body').innerHTML =
-        `<div class="tt-row">${territory.isPlayer ? '★ Your Capital' : 'Settlement'}</div>
-         <div class="tt-row">Zone radius: ${territory.radius} km</div>`;
-      hoverInfo.textContent = territory.cityName + (territory.isPlayer ? ' — Your Capital' : '');
-    } else {
-      tooltip.style.display = 'none';
-      hoverInfo.textContent = 'Pan with mouse · Scroll to zoom';
-    }
-  }
-
-  return { init, resize, draw, placePlayerCity, getRandomSpawn };
+  return {
+    init, resize, draw,
+    placePlayerCapital,
+    setInkMode,
+    claimTile,
+    autoExpand,
+    getPlayerTileCount,
+    getPlayerResources,
+    getGrid: () => grid,
+    setOnTilePainted: (fn) => { onTilePainted = fn; },
+    setOnTileHover:   (fn) => { onTileHover   = fn; },
+    setPlayerColor:   (c)  => { playerColor   = c;  },
+    setPlayerGov:     (g)  => { playerGovId   = g;  },
+  };
 })();

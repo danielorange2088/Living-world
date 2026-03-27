@@ -1,539 +1,730 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Living World</title>
-  <link rel="stylesheet" href="css/style.css">
-  <style>
-    /* ── INK BAR ─────────────────────────────── */
-    .ink-bar-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      background: rgba(242,232,208,0.95);
-      border-top: 1px solid var(--parchment-dkr);
-      flex-shrink: 0;
-    }
-    .ink-label {
-      font-family: 'Cinzel', serif;
-      font-size: 10px;
-      letter-spacing: 2px;
-      color: var(--ink-faded);
-      white-space: nowrap;
-    }
-    .ink-track {
-      flex: 1;
-      height: 10px;
-      background: var(--parchment-dkr);
-      border-radius: 5px;
-      overflow: hidden;
-      border: 1px solid var(--border-ornate);
-    }
-    #ink-fill {
-      height: 100%;
-      background: linear-gradient(to right, #3a6a3a, #6aaa6a);
-      border-radius: 5px;
-      transition: width 0.3s ease;
-    }
-    #ink-count {
-      font-family: 'Cinzel', serif;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--ink);
-      min-width: 28px;
-      text-align: right;
-    }
-    .btn-ink {
-      font-family: 'Cinzel', serif;
-      font-size: 10px;
-      letter-spacing: 1px;
-      padding: 5px 14px;
-      border: 1px solid #3a6a3a;
-      background: rgba(58,106,58,0.1);
-      color: #2a5a2a;
-      cursor: pointer;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-    .btn-ink.active {
-      background: #3a6a3a;
-      color: #f2e8d0;
-      box-shadow: 0 0 10px rgba(58,106,58,0.4);
-    }
-    .btn-ink:hover { background: rgba(58,106,58,0.25); }
-    .btn-ink.active:hover { background: #2a5a2a; }
-
-    .btn-decree {
-      font-family: 'Cinzel', serif;
-      font-size: 10px;
-      letter-spacing: 1px;
-      padding: 5px 12px;
-      border: 1px solid var(--gold);
-      background: rgba(184,134,11,0.1);
-      color: var(--gold);
-      cursor: pointer;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-    .btn-decree:hover { background: rgba(184,134,11,0.25); }
-
-    /* ── UNITS PANEL ─────────────────────────── */
-    .unit-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border: 1px solid var(--parchment-dkr);
-      background: rgba(255,255,255,0.3);
-      cursor: pointer;
-      margin-bottom: 6px;
-      transition: all 0.2s;
-      width: 100%;
-      text-align: left;
-    }
-    .unit-btn:hover {
-      background: rgba(255,255,255,0.6);
-      border-color: var(--gold);
-    }
-    .unit-btn-icon { font-size: 18px; }
-    .unit-btn-info { flex: 1; }
-    .unit-btn-name {
-      font-family: 'Cinzel', serif;
-      font-size: 11px;
-      color: var(--ink);
-      display: block;
-    }
-    .unit-btn-cost {
-      font-size: 10px;
-      font-style: italic;
-      color: var(--ink-light);
-    }
-
-    /* Terrain legend */
-    .terrain-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 3px 6px;
-    }
-    .terrain-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 10px;
-      color: var(--ink-faded);
-    }
-    .terrain-swatch {
-      width: 10px; height: 10px;
-      border-radius: 1px;
-      flex-shrink: 0;
-      border: 1px solid rgba(0,0,0,0.1);
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Living World</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --parchment:#f2e8d0; --parchment-dk:#ddd0a8; --parchment-dkr:#c8b882;
+  --ink:#1a1208; --ink-faded:#4a3c22; --ink-light:#7a6840;
+  --gold:#b8860b; --gold-bright:#d4a017; --gold-pale:#e8d080;
+  --border:#8b6914; --shadow:rgba(26,18,8,0.4); --panel:rgba(242,232,208,0.98);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:#1a1208;font-family:'IM Fell English',Georgia,serif;color:var(--ink);}
+.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;transition:opacity 0.5s;}
+.screen.hidden{opacity:0;pointer-events:none;}
+#screen-game.hidden{display:none!important;}
+/* TITLE */
+#screen-title{background:radial-gradient(ellipse at center,#2e1f08,#080503);flex-direction:column;}
+.paper{background:var(--parchment);border:3px solid var(--border);position:relative;box-shadow:0 0 0 8px rgba(184,134,11,.1),0 0 80px rgba(0,0,0,.9),inset 0 0 40px rgba(184,134,11,.05);animation:fu .7s ease;}
+@keyframes fu{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.paper::before,.paper::after{content:'';position:absolute;width:24px;height:24px;border:2px solid var(--gold);}
+.paper::before{top:7px;left:7px;border-right:none;border-bottom:none;}
+.paper::after{bottom:7px;right:7px;border-left:none;border-top:none;}
+.ctr{position:absolute;width:24px;height:24px;border:2px solid var(--gold);}
+.ctr.tr{top:7px;right:7px;border-left:none;border-bottom:none;}
+.ctr.bl{bottom:7px;left:7px;border-right:none;border-top:none;}
+.title-paper{padding:50px 68px 42px;text-align:center;max-width:530px;width:90%;}
+.gtitle{font-family:'Cinzel',serif;font-size:46px;font-weight:900;color:var(--ink);letter-spacing:6px;line-height:1;text-shadow:2px 2px 0 var(--parchment-dkr);margin-bottom:5px;}
+.gsub{font-style:italic;font-size:13px;color:var(--ink-light);letter-spacing:3px;margin-bottom:26px;}
+.div{width:100%;height:1px;background:linear-gradient(to right,transparent,var(--gold),transparent);margin:16px 0;}
+.flavor{font-size:12px;font-style:italic;color:var(--ink-faded);margin-bottom:30px;line-height:1.8;}
+.btn{font-family:'Cinzel',serif;font-size:12px;font-weight:700;letter-spacing:3px;padding:12px 36px;background:var(--ink);color:var(--gold-pale);border:2px solid var(--gold);cursor:pointer;transition:all .2s;display:inline-block;}
+.btn:hover{background:var(--ink-faded);box-shadow:0 0 20px rgba(184,134,11,.3);transform:translateY(-1px);}
+/* CREATE */
+#screen-create{background:radial-gradient(ellipse at center,#2e1f08,#080503);align-items:flex-start;overflow-y:auto;padding:22px 14px;}
+.create-paper{padding:38px 46px;max-width:650px;width:100%;margin:auto;}
+.ctitle{font-family:'Cinzel',serif;font-size:22px;font-weight:700;letter-spacing:4px;text-align:center;margin-bottom:4px;}
+.csub{font-style:italic;font-size:12px;color:var(--ink-light);text-align:center;margin-bottom:22px;}
+.flabel{font-family:'Cinzel',serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--ink-faded);margin-bottom:6px;display:block;}
+.fgroup{margin-bottom:20px;}
+.tinput{width:100%;padding:9px 13px;font-family:'IM Fell English',serif;font-size:16px;background:rgba(255,255,255,.5);border:1px solid var(--parchment-dkr);border-bottom:2px solid var(--gold);color:var(--ink);outline:none;transition:all .2s;}
+.tinput:focus{background:rgba(255,255,255,.8);border-bottom-color:var(--gold-bright);}
+.tinput::placeholder{color:var(--ink-light);font-style:italic;}
+.ggrid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:22px;}
+.gcard{border:2px solid var(--parchment-dkr);padding:14px 11px 12px;cursor:pointer;background:rgba(255,255,255,.25);transition:all .2s;text-align:center;position:relative;}
+.gcard:hover{border-color:var(--gold);background:rgba(255,255,255,.5);transform:translateY(-2px);box-shadow:0 4px 14px var(--shadow);}
+.gcard.sel{border-color:var(--gold-bright);background:rgba(255,255,255,.65);box-shadow:0 0 0 3px rgba(184,134,11,.15);}
+.gcard.sel::after{content:'✦';position:absolute;top:4px;right:7px;font-size:9px;color:var(--gold-bright);}
+.gicon{font-size:24px;margin-bottom:6px;display:block;}
+.gname{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.gdesc{font-size:9px;font-style:italic;color:var(--ink-faded);line-height:1.5;margin-bottom:8px;}
+.gstats{display:flex;flex-direction:column;gap:2px;}
+.gstat{font-size:8px;font-family:'Cinzel',serif;padding:2px 4px;border-radius:2px;}
+.gstat.b{color:#2a5a2a;background:rgba(42,90,42,.1);}
+.gstat.d{color:#8b1a1a;background:rgba(139,26,26,.1);}
+.crow{display:flex;gap:6px;flex-wrap:wrap;}
+.csw{width:26px;height:26px;border-radius:2px;border:2px solid transparent;cursor:pointer;transition:transform .15s,border-color .15s;}
+.csw:hover{transform:scale(1.15);}
+.csw.sel{border-color:var(--ink);transform:scale(1.15);}
+.fprev{display:flex;overflow:hidden;border:1px solid var(--ink-faded);}
+.fstr{flex:1;}
+/* GAME */
+#screen-game{flex-direction:column;background:#1a1208;z-index:1;}
+#topbar{height:44px;background:var(--parchment);border-bottom:2px solid var(--border);display:flex;align-items:center;padding:0 13px;gap:16px;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,.5);z-index:20;}
+.nflag{display:flex;height:19px;width:30px;border:1px solid var(--ink-faded);overflow:hidden;flex-shrink:0;}
+#nname{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--ink);letter-spacing:1px;}
+#ngov{font-size:9px;font-style:italic;color:var(--ink-light);}
+.tsep{width:1px;height:24px;background:var(--parchment-dkr);}
+.schip{display:flex;align-items:center;gap:4px;font-family:'Cinzel',serif;font-size:9px;color:var(--ink-faded);letter-spacing:1px;}
+.schip .v{font-size:11px;font-weight:700;color:var(--ink);}
+.schip .ic{font-size:12px;}
+.tinfo{margin-left:auto;font-family:'Cinzel',serif;font-size:10px;color:var(--ink-faded);letter-spacing:2px;}
+#yrdisp{font-size:12px;font-weight:700;color:var(--ink);}
+.endbtn{font-family:'Cinzel',serif;font-size:10px;font-weight:700;letter-spacing:2px;padding:6px 16px;background:var(--ink);color:var(--gold-pale);border:1px solid var(--gold);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.endbtn:hover{background:var(--ink-faded);box-shadow:0 0 10px rgba(184,134,11,.3);}
+.inkbar{display:flex;align-items:center;gap:9px;padding:5px 13px;background:var(--parchment);border-bottom:1px solid var(--parchment-dkr);flex-shrink:0;}
+.inklbl{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:var(--ink-faded);white-space:nowrap;}
+.inktrack{flex:1;height:9px;background:var(--parchment-dkr);border-radius:5px;overflow:hidden;border:1px solid var(--border);}
+#inkfill{height:100%;background:linear-gradient(to right,#3a6a3a,#6aaa6a);border-radius:5px;transition:width .3s;width:80%;}
+#inkcnt{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--ink);min-width:26px;text-align:right;}
+.ibtn{font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;padding:4px 12px;border:1px solid #3a6a3a;background:rgba(58,106,58,.1);color:#2a5a2a;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.ibtn.on{background:#3a6a3a;color:#f2e8d0;box-shadow:0 0 8px rgba(58,106,58,.4);}
+.ibtn:hover{background:rgba(58,106,58,.25);}
+.ibtn.on:hover{background:#2a5a2a;}
+.decbtn{font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;padding:4px 11px;border:1px solid var(--gold);background:rgba(184,134,11,.1);color:var(--gold);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.decbtn:hover{background:rgba(184,134,11,.25);}
+#gbody{flex:1;display:flex;overflow:hidden;}
+#mapwrap{flex:1;position:relative;overflow:hidden;cursor:grab;background:#1a3a5c;}
+#mapwrap:active{cursor:grabbing;}
+#mapcanvas{position:absolute;top:0;left:0;}
+#sidebar{width:205px;background:var(--panel);border-left:2px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
+.sbs{padding:11px 13px;border-bottom:1px solid var(--parchment-dkr);}
+.sbtitle{font-family:'Cinzel',serif;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:8px;}
+.sbstat{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-faded);margin-bottom:3px;}
+.sbv{font-family:'Cinzel',serif;font-size:9px;color:var(--ink);font-weight:600;}
+.sttrack{height:6px;background:var(--parchment-dkr);border-radius:3px;overflow:hidden;margin-top:3px;}
+.stfill{height:100%;border-radius:3px;transition:width .4s,background .4s;}
+.ubtn{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid var(--parchment-dkr);background:rgba(255,255,255,.3);cursor:pointer;margin-bottom:4px;transition:all .2s;width:100%;text-align:left;}
+.ubtn:hover{background:rgba(255,255,255,.6);border-color:var(--gold);}
+.uic{font-size:15px;}
+.unm{font-family:'Cinzel',serif;font-size:9px;color:var(--ink);display:block;}
+.ucst{font-size:8px;font-style:italic;color:var(--ink-light);}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:3px 5px;}
+.titem{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--ink-faded);}
+.tsw{width:9px;height:9px;border-radius:1px;flex-shrink:0;border:1px solid rgba(0,0,0,.12);}
+#evlog{overflow-y:auto;padding:7px 11px;display:flex;flex-direction:column;gap:4px;max-height:200px;}
+.litem{font-size:9px;color:var(--ink-faded);line-height:1.5;border-bottom:1px solid rgba(184,134,11,.1);padding-bottom:3px;}
+.lyr{font-family:'Cinzel',serif;font-size:7px;color:var(--gold);letter-spacing:1px;display:block;margin-bottom:1px;}
+.litem.warning{color:#7a2a1a;}
+.litem.event{color:#1a3a6b;}
+#statusbar{height:24px;background:var(--parchment-dk);border-top:1px solid var(--parchment-dkr);display:flex;align-items:center;padding:0 13px;font-size:9px;color:var(--ink-faded);flex-shrink:0;}
+#mtt{position:fixed;background:var(--parchment);border:1px solid var(--border);padding:8px 12px;pointer-events:none;display:none;z-index:200;box-shadow:3px 3px 10px var(--shadow);max-width:170px;}
+.ttn{font-family:'Cinzel',serif;font-size:10px;color:var(--ink);margin-bottom:3px;font-weight:700;}
+.ttr{color:var(--ink-faded);font-size:9px;margin-bottom:2px;}
+#toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--ink);color:var(--gold-pale);font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;padding:10px 24px;border:1px solid var(--gold);opacity:0;transition:all .35s;pointer-events:none;z-index:300;text-align:center;max-width:380px;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--parchment-dk);}
+::-webkit-scrollbar-thumb{background:var(--parchment-dkr);border-radius:2px;}
+</style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════
-     TITLE SCREEN
-══════════════════════════════════════════ -->
+<!-- TITLE -->
 <div class="screen" id="screen-title">
-  <div class="title-paper fade-in">
-    <div class="corner-ornament tr"></div>
-    <div class="corner-ornament bl"></div>
-    <div class="game-title">LIVING WORLD</div>
-    <div class="game-subtitle">A Grand Strategy of Civilization</div>
-    <div class="title-divider"></div>
-    <p class="title-flavor">
-      From a single hearth fire, an empire may be born —<br>
-      or consumed by the very people who built it.
-    </p>
-    <button class="btn-primary" onclick="showCreateScreen()">Begin a New Civilization</button>
-    <div class="title-divider" style="margin-top:28px;margin-bottom:12px;"></div>
-    <div style="font-size:11px;font-style:italic;color:var(--ink-light);">Phase II — Expansion, Land & Resources</div>
+  <div class="paper title-paper">
+    <div class="ctr tr"></div><div class="ctr bl"></div>
+    <div class="gtitle">LIVING WORLD</div>
+    <div class="gsub">A Grand Strategy of Civilization</div>
+    <div class="div"></div>
+    <p class="flavor">From a single hearth fire, an empire may be born —<br>or consumed by the very people who built it.</p>
+    <button class="btn" onclick="showCreate()">Begin a New Civilization</button>
+    <div class="div" style="margin-top:22px;margin-bottom:9px;"></div>
+    <div style="font-size:9px;font-style:italic;color:var(--ink-light);">Phase II — Expansion, Land &amp; Resources</div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     NATION CREATION
-══════════════════════════════════════════ -->
+<!-- CREATE -->
 <div class="screen hidden" id="screen-create">
-  <div class="create-paper fade-in">
-    <div class="corner-ornament tr"></div>
-    <div class="corner-ornament bl"></div>
-    <div class="create-title">Found Your Nation</div>
-    <div class="create-sub">From nothing, you will build everything.</div>
-    <div class="title-divider" style="margin-bottom:24px;"></div>
-
-    <div class="field-group">
-      <label class="field-label" for="input-nation-name">Name of Your Nation</label>
-      <input class="text-input" id="input-nation-name" type="text"
-             placeholder="e.g. The Kingdom of Valdris…" maxlength="40" oninput="updatePreview()">
-    </div>
-    <div class="field-group">
-      <label class="field-label" for="input-capital-name">Name of Your Capital City</label>
-      <input class="text-input" id="input-capital-name" type="text"
-             placeholder="e.g. Valdrimoor…" maxlength="30" oninput="updatePreview()">
-    </div>
-
-    <!-- Government -->
-    <div class="field-group">
-      <label class="field-label">Form of Government</label>
-      <div class="gov-grid">
-        <div class="gov-card" id="gov-tribal" onclick="selectGov('tribal')">
-          <span class="gov-icon">🪶</span>
-          <div class="gov-name">Tribal</div>
-          <div class="gov-desc">Clans ruled by tradition. Expands aggressively every turn automatically.</div>
-          <div class="gov-stats">
-            <div class="gov-stat buff">+30% Expansion</div>
-            <div class="gov-stat buff">18 Ink / Turn</div>
-            <div class="gov-stat debuff">-30% Gold Income</div>
-            <div class="gov-stat debuff">Unused ink auto-spreads</div>
-          </div>
+  <div class="paper create-paper">
+    <div class="ctr tr"></div><div class="ctr bl"></div>
+    <div class="ctitle">Found Your Nation</div>
+    <div class="csub">From nothing, you will build everything.</div>
+    <div class="div" style="margin-bottom:20px;"></div>
+    <div class="fgroup"><label class="flabel">Name of Your Nation</label><input class="tinput" id="inp-nation" type="text" placeholder="e.g. The Kingdom of Valdris…" maxlength="40" oninput="updPrev()"></div>
+    <div class="fgroup"><label class="flabel">Name of Your Capital City</label><input class="tinput" id="inp-cap" type="text" placeholder="e.g. Valdrimoor…" maxlength="30" oninput="updPrev()"></div>
+    <div class="fgroup">
+      <label class="flabel">Form of Government</label>
+      <div class="ggrid">
+        <div class="gcard" id="gc-tribal" onclick="selGov('tribal')">
+          <span class="gicon">🪶</span><div class="gname">Tribal</div>
+          <div class="gdesc">Clans by tradition. Expands every turn automatically.</div>
+          <div class="gstats"><div class="gstat b">18 Ink / Turn</div><div class="gstat b">+30% Expansion</div><div class="gstat d">-30% Gold Income</div><div class="gstat d">Unused ink auto-spreads</div></div>
         </div>
-        <div class="gov-card" id="gov-kingship" onclick="selectGov('kingship')">
-          <span class="gov-icon">👑</span>
-          <div class="gov-name">Kingship</div>
-          <div class="gov-desc">A sovereign monarch rules. Expansion only via Royal Decree (costs gold).</div>
-          <div class="gov-stats">
-            <div class="gov-stat buff">+25% Gold Income</div>
-            <div class="gov-stat buff">+20% Stability</div>
-            <div class="gov-stat debuff">No auto-expansion</div>
-            <div class="gov-stat debuff">Decree costs 40 gold</div>
-          </div>
+        <div class="gcard" id="gc-kingship" onclick="selGov('kingship')">
+          <span class="gicon">👑</span><div class="gname">Kingship</div>
+          <div class="gdesc">Sovereign monarch. Expand via Royal Decree only.</div>
+          <div class="gstats"><div class="gstat b">+25% Gold Income</div><div class="gstat b">+20% Stability</div><div class="gstat d">No auto-expansion</div><div class="gstat d">Decree costs 40 gold</div></div>
         </div>
-        <div class="gov-card" id="gov-polyarchy" onclick="selectGov('polyarchy')">
-          <span class="gov-icon">⚖️</span>
-          <div class="gov-name">Simple Polyarchy</div>
-          <div class="gov-desc">A council shares power. Moderate ink that saves up across turns.</div>
-          <div class="gov-stats">
-            <div class="gov-stat buff">+40% Trade Income</div>
-            <div class="gov-stat buff">Ink banks up to 30</div>
-            <div class="gov-stat debuff">-20% Military</div>
-            <div class="gov-stat debuff">-25% Expansion</div>
-          </div>
+        <div class="gcard" id="gc-polyarchy" onclick="selGov('polyarchy')">
+          <span class="gicon">⚖️</span><div class="gname">Simple Polyarchy</div>
+          <div class="gdesc">Council shares power. Ink saves up across turns.</div>
+          <div class="gstats"><div class="gstat b">+40% Trade Income</div><div class="gstat b">Ink banks to 30</div><div class="gstat d">-20% Military</div><div class="gstat d">-25% Expansion</div></div>
         </div>
       </div>
     </div>
-
-    <!-- Flag colors -->
-    <div class="field-group flag-section">
-      <label class="field-label">Nation Colors</label>
-      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
-        <div>
-          <div style="font-size:10px;color:var(--ink-light);margin-bottom:6px;font-style:italic;">Primary</div>
-          <div class="color-row" id="colors-primary"></div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--ink-light);margin-bottom:6px;font-style:italic;">Secondary</div>
-          <div class="color-row" id="colors-secondary"></div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--ink-light);margin-bottom:6px;font-style:italic;">Accent</div>
-          <div class="color-row" id="colors-accent"></div>
-        </div>
+    <div class="fgroup">
+      <label class="flabel">Nation Colors</label>
+      <div style="display:flex;align-items:flex-start;gap:13px;flex-wrap:wrap;">
+        <div><div style="font-size:8px;color:var(--ink-light);margin-bottom:4px;font-style:italic;">Primary</div><div class="crow" id="cp-p"></div></div>
+        <div><div style="font-size:8px;color:var(--ink-light);margin-bottom:4px;font-style:italic;">Secondary</div><div class="crow" id="cp-s"></div></div>
+        <div><div style="font-size:8px;color:var(--ink-light);margin-bottom:4px;font-style:italic;">Accent</div><div class="crow" id="cp-a"></div></div>
         <div style="margin-left:auto;">
-          <div style="font-size:10px;color:var(--ink-light);margin-bottom:6px;font-style:italic;">Preview</div>
-          <div class="flag-preview" id="flag-preview-big" style="width:80px;height:52px;">
-            <div class="flag-stripe"></div><div class="flag-stripe"></div><div class="flag-stripe"></div>
-          </div>
-          <div id="nation-preview-name" style="font-family:'Cinzel',serif;font-size:11px;color:var(--ink-faded);margin-top:6px;text-align:center;max-width:80px;"></div>
+          <div style="font-size:8px;color:var(--ink-light);margin-bottom:4px;font-style:italic;">Preview</div>
+          <div class="fprev" id="fprev" style="width:68px;height:44px;"><div class="fstr"></div><div class="fstr"></div><div class="fstr"></div></div>
+          <div id="prevnm" style="font-family:'Cinzel',serif;font-size:9px;color:var(--ink-faded);margin-top:4px;text-align:center;max-width:68px;"></div>
         </div>
       </div>
     </div>
-
-    <div class="title-divider" style="margin-bottom:20px;"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <button class="btn-primary" style="background:transparent;color:var(--ink-faded);border-color:var(--parchment-dkr);font-size:12px;padding:10px 20px;" onclick="showTitleScreen()">← Back</button>
-      <button class="btn-primary" id="btn-begin" onclick="beginGame()" style="opacity:0.4;pointer-events:none;">Found Your Nation →</button>
+    <div class="div" style="margin-bottom:16px;"></div>
+    <div style="display:flex;justify-content:space-between;">
+      <button class="btn" style="background:transparent;color:var(--ink-faded);border-color:var(--parchment-dkr);font-size:10px;padding:8px 16px;" onclick="showTitle()">← Back</button>
+      <button class="btn" id="btn-begin" onclick="beginGame()" style="opacity:.4;pointer-events:none;">Found Your Nation →</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     MAIN GAME
-══════════════════════════════════════════ -->
+<!-- GAME -->
 <div class="screen hidden" id="screen-game" style="flex-direction:column;">
-
-  <!-- Top bar -->
   <div id="topbar">
-    <div class="nation-flag-sm" id="topbar-flag">
-      <div class="flag-stripe" style="background:#c0392b"></div>
-      <div class="flag-stripe" style="background:#f1c40f"></div>
-      <div class="flag-stripe" style="background:#2980b9"></div>
-    </div>
-    <div>
-      <div id="nation-name-display" style="font-family:'Cinzel',serif;font-size:14px;font-weight:700;color:var(--ink);letter-spacing:1px;">—</div>
-      <div id="gov-display" style="font-size:10px;font-style:italic;color:var(--ink-light);">—</div>
-    </div>
-    <div class="topbar-sep"></div>
-    <div class="stat-chip"><span class="icon">💰</span><span>Gold</span><span class="val" id="chip-gold">0</span></div>
-    <div class="stat-chip"><span class="icon">🌾</span><span>Food</span><span class="val" id="chip-food">0</span></div>
-    <div class="stat-chip"><span class="icon">👥</span><span>Pop</span><span class="val" id="chip-pop">0</span></div>
-    <div class="stat-chip"><span class="icon">⚔️</span><span>Mil</span><span class="val" id="chip-mil">0</span></div>
-    <div class="stat-chip"><span class="icon">⚒️</span><span>Prod</span><span class="val" id="chip-prod">0</span></div>
-    <div class="turn-info"><span id="year-display">3000 BCE</span></div>
-    <button class="btn-end-turn" onclick="handleEndTurn()">End Turn →</button>
+    <div class="nflag" id="tflag"><div class="fstr" style="background:#c0392b"></div><div class="fstr" style="background:#f1c40f"></div><div class="fstr" style="background:#2980b9"></div></div>
+    <div><div id="nname">—</div><div id="ngov">—</div></div>
+    <div class="tsep"></div>
+    <div class="schip"><span class="ic">💰</span><span>Gold</span><span class="v" id="c-gold">0</span></div>
+    <div class="schip"><span class="ic">🌾</span><span>Food</span><span class="v" id="c-food">0</span></div>
+    <div class="schip"><span class="ic">👥</span><span>Pop</span><span class="v" id="c-pop">0</span></div>
+    <div class="schip"><span class="ic">⚔️</span><span>Mil</span><span class="v" id="c-mil">0</span></div>
+    <div class="schip"><span class="ic">⚒️</span><span>Prod</span><span class="v" id="c-prod">0</span></div>
+    <div class="tinfo"><span id="yrdisp">3000 BCE</span></div>
+    <button class="endbtn" onclick="doEndTurn()">End Turn →</button>
   </div>
-
-  <!-- Ink bar -->
-  <div class="ink-bar-wrap">
-    <span class="ink-label">🖋 EXPANSION INK</span>
-    <div class="ink-track"><div id="ink-fill" style="width:100%"></div></div>
-    <span id="ink-count">0</span>
-    <button class="btn-ink" id="btn-ink-toggle" onclick="toggleInkMode()">✏ Paint Borders</button>
-    <button class="btn-decree" id="btn-decree" onclick="Game.issueRoyalDecree()" style="display:none;">⚜ Royal Decree (40g)</button>
+  <div class="inkbar">
+    <span class="inklbl">🖋 EXPANSION INK</span>
+    <div class="inktrack"><div id="inkfill"></div></div>
+    <span id="inkcnt">0</span>
+    <button class="ibtn" id="ibtn" onclick="toggleInk()">✏ Paint Borders</button>
+    <button class="decbtn" id="decbtn" onclick="doDecree()" style="display:none;">⚜ Royal Decree (40g)</button>
   </div>
-
-  <!-- Body -->
-  <div id="game-body">
-
-    <!-- Map -->
-    <div id="map-wrap">
-      <canvas id="map-canvas"></canvas>
-    </div>
-
-    <!-- Right sidebar -->
+  <div id="gbody">
+    <div id="mapwrap"><canvas id="mapcanvas"></canvas></div>
     <div id="sidebar">
-
-      <!-- Empire health -->
-      <div class="sb-section">
-        <div class="sb-title">Empire</div>
-        <div class="sb-stat"><span>Stability</span><span class="sb-val" id="sb-stability">75%</span></div>
-        <div class="stability-bar-wrap">
-          <div class="stability-bar-fill" id="stability-fill" style="width:75%"></div>
+      <div class="sbs">
+        <div class="sbtitle">Empire</div>
+        <div class="sbstat"><span>Stability</span><span class="sbv" id="s-stab">75%</span></div>
+        <div class="sttrack"><div class="stfill" id="stfill" style="width:75%;background:#4a8a4a"></div></div>
+        <div class="sbstat" style="margin-top:6px;"><span>Cultural Unity</span><span class="sbv" id="s-unity">80%</span></div>
+        <div class="sbstat"><span>Cities</span><span class="sbv" id="s-cities">1</span></div>
+        <div class="sbstat"><span>Territory</span><span class="sbv" id="s-tiles">0</span></div>
+        <div class="sbstat"><span>Breakaways</span><span class="sbv" id="s-breaks">0</span></div>
+      </div>
+      <div class="sbs">
+        <div class="sbtitle">Income / Turn</div>
+        <div class="sbstat"><span>💰 Gold</span><span class="sbv" id="s-goldI">+0</span></div>
+        <div class="sbstat"><span>🌾 Food</span><span class="sbv" id="s-foodI">+0</span></div>
+        <div class="sbstat"><span>⚒️ Prod</span><span class="sbv" id="s-prodI">+0</span></div>
+        <div class="sbstat"><span>📜 Research</span><span class="sbv" id="s-res">0</span></div>
+      </div>
+      <div class="sbs">
+        <div class="sbtitle">Active Resources</div>
+        <div id="s-activeRes" style="font-size:9px;font-style:italic;color:var(--ink-light);">No builders deployed</div>
+      </div>
+      <div class="sbs">
+        <div class="sbtitle">Recruit Units</div>
+        <button class="ubtn" onclick="doRecruit('trader')"><span class="uic">🐪</span><div><span class="unm">Trader</span><span class="ucst">30 gold · earns gold on routes</span></div></button>
+        <button class="ubtn" onclick="doRecruit('builder')"><span class="uic">🪚</span><div><span class="unm">Builder</span><span class="ucst">20 gold+10 prod · extracts resources</span></div></button>
+      </div>
+      <div class="sbs">
+        <div class="sbtitle">Terrain</div>
+        <div class="tgrid">
+          <div class="titem"><div class="tsw" style="background:#4a7a96"></div>Ocean</div>
+          <div class="titem"><div class="tsw" style="background:#7ab8d0"></div>Coast</div>
+          <div class="titem"><div class="tsw" style="background:#c4b86a"></div>Plains</div>
+          <div class="titem"><div class="tsw" style="background:#5a8040"></div>Forest</div>
+          <div class="titem"><div class="tsw" style="background:#a09060"></div>Hills</div>
+          <div class="titem"><div class="tsw" style="background:#c8a040"></div>Desert</div>
+          <div class="titem"><div class="tsw" style="background:#8aaa90"></div>Tundra</div>
+          <div class="titem"><div class="tsw" style="background:#808888"></div>Mountain</div>
         </div>
-        <div class="sb-stat" style="margin-top:8px;"><span>Cultural Unity</span><span class="sb-val" id="sb-unity">80%</span></div>
-        <div class="sb-stat"><span>Cities</span><span class="sb-val" id="sb-cities">1</span></div>
-        <div class="sb-stat"><span>Territory</span><span class="sb-val" id="sb-tiles">0</span> <span style="font-size:9px;color:var(--ink-light);">tiles</span></div>
-        <div class="sb-stat"><span>Breakaways</span><span class="sb-val" id="sb-breakaway">0</span></div>
+        <div style="margin-top:6px;font-size:8px;font-style:italic;color:var(--ink-light);">🪵 Timber · 🪨 Stone · ⬟ Iron · ◈ Copper</div>
       </div>
-
-      <!-- Income -->
-      <div class="sb-section">
-        <div class="sb-title">Income / Turn</div>
-        <div class="sb-stat"><span>💰 Gold</span><span class="sb-val" id="sb-gold-inc">+0</span></div>
-        <div class="sb-stat"><span>🌾 Food</span><span class="sb-val" id="sb-food-inc">+0</span></div>
-        <div class="sb-stat"><span>⚒️ Production</span><span class="sb-val" id="sb-prod-inc">+0</span></div>
-        <div class="sb-stat"><span>📜 Research</span><span class="sb-val" id="sb-research">0</span></div>
+      <div class="sbs" style="flex:1;min-height:0;">
+        <div class="sbtitle">Chronicle</div>
+        <div id="evlog"></div>
       </div>
-
-      <!-- Resources -->
-      <div class="sb-section">
-        <div class="sb-title">Active Resources</div>
-        <div id="sb-resources"><span style="font-style:italic;color:var(--ink-light);font-size:11px;">No builders deployed</span></div>
-      </div>
-
-      <!-- Units -->
-      <div class="sb-section">
-        <div class="sb-title">Recruit Units</div>
-        <button class="unit-btn" onclick="Game.recruitUnit('trader')">
-          <span class="unit-btn-icon">🐪</span>
-          <div class="unit-btn-info">
-            <span class="unit-btn-name">Trader</span>
-            <span class="unit-btn-cost">Cost: 30 gold · Earns gold on routes</span>
-          </div>
-        </button>
-        <button class="unit-btn" onclick="Game.recruitUnit('builder')">
-          <span class="unit-btn-icon">🪚</span>
-          <div class="unit-btn-info">
-            <span class="unit-btn-name">Builder</span>
-            <span class="unit-btn-cost">Cost: 20 gold + 10 prod · Extracts resources</span>
-          </div>
-        </button>
-      </div>
-
-      <!-- Terrain legend -->
-      <div class="sb-section">
-        <div class="sb-title">Terrain</div>
-        <div class="terrain-grid">
-          <div class="terrain-item"><div class="terrain-swatch" style="background:#4a7a96"></div>Ocean</div>
-          <div class="terrain-item"><div class="terrain-swatch" style="background:#7ab8d0"></div>Coast</div>
-          <div class="terrain-item"><div class="terrain-swatch" style="background:#c4b86a"></div>Plains</div>
-          <div class="terrain-item"><div class="terrain-swatch" style="background:#5a8040"></div>Forest</div>
-          <div class="terrain-item"><div class="terrain-swatch" style="background:#a09060"></div>Hills</div>
-          <div class="terrain-item"><div class="terrain-swatch" style="background:#c8a040"></div>Desert</div>
-          <div class="terrain-item"><div class="terrain-swatch" style="background:#8aaa90"></div>Tundra</div>
-          <div class="terrain-item"><div class="terrain-swatch" style="background:#808888"></div>Mountain</div>
-        </div>
-        <div style="margin-top:8px;font-size:10px;font-style:italic;color:var(--ink-light);">
-          🪵 Timber · 🪨 Stone · ⬟ Iron · ◈ Copper
-        </div>
-      </div>
-
-      <!-- Chronicle -->
-      <div class="sb-section" style="flex:1;display:flex;flex-direction:column;min-height:120px;padding-bottom:0;">
-        <div class="sb-title">Chronicle</div>
-        <div id="event-log"></div>
-      </div>
-
     </div>
   </div>
-
-  <!-- Status bar -->
-  <div id="statusbar">
-    <span id="hover-info">Pan with mouse · Scroll to zoom · Toggle Paint Borders to claim territory</span>
-  </div>
+  <div id="statusbar"><span id="hinfo">Pan · Scroll to zoom · Paint Borders to expand</span></div>
 </div>
 
-<!-- Tooltip -->
-<div id="map-tooltip">
-  <div class="tt-name" id="tt-name"></div>
-  <div id="tt-body"></div>
-</div>
-
-<!-- Toast -->
+<div id="mtt"><div class="ttn" id="ttn"></div><div id="ttb"></div></div>
 <div id="toast"></div>
 
-<script src="js/nations.js"></script>
-<script src="js/map.js"></script>
-<script src="js/game.js"></script>
 <script>
-// ── UI CONTROLLER ─────────────────────────────
-let selectedGov    = null;
-let selectedColors = ['#c0392b','#f1c40f','#2980b9'];
-let inkModeActive  = false;
+// ═══════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════
+const GOVS={
+  tribal:   {id:'tribal',   name:'Tribal',         stabilityDecay:.8,breakoffAt:45,modernAt:10,inkPerTurn:18,inkMax:18, inkSave:false,autoExpand:true, autoRate:.6, decree:false,inkCosts:{mountain:6,tundra:4,desert:4,hills:3,forest:2,plains:1,coast:2},goldMult:.7 },
+  kingship: {id:'kingship', name:'Kingship',        stabilityDecay:.4,breakoffAt:30,modernAt:15,inkPerTurn:0, inkMax:24, inkSave:true, autoExpand:false,autoRate:0,  decree:true, inkCosts:{mountain:5,tundra:3,desert:3,hills:2,forest:1,plains:1,coast:1},goldMult:1.25},
+  polyarchy:{id:'polyarchy',name:'Simple Polyarchy',stabilityDecay:.3,breakoffAt:25,modernAt:12,inkPerTurn:10,inkMax:30, inkSave:true, autoExpand:true, autoRate:.3, decree:false,inkCosts:{mountain:8,tundra:5,desert:5,hills:3,forest:2,plains:1,coast:2},goldMult:1.0 },
+};
+const LAND={
+  ocean:   {id:'ocean',   name:'Ocean',   color:'#4a7a96',claim:false,food:0,gold:0,prod:0},
+  coast:   {id:'coast',   name:'Coast',   color:'#7ab8d0',claim:true, food:1,gold:1,prod:0},
+  plains:  {id:'plains',  name:'Plains',  color:'#c4b86a',claim:true, food:3,gold:1,prod:1},
+  forest:  {id:'forest',  name:'Forest',  color:'#5a8040',claim:true, food:1,gold:0,prod:2},
+  hills:   {id:'hills',   name:'Hills',   color:'#a09060',claim:true, food:1,gold:2,prod:2},
+  desert:  {id:'desert',  name:'Desert',  color:'#c8a040',claim:true, food:0,gold:1,prod:0},
+  tundra:  {id:'tundra',  name:'Tundra',  color:'#8aaa90',claim:true, food:0,gold:0,prod:1},
+  mountain:{id:'mountain',name:'Mountain',color:'#808888',claim:true, food:0,gold:3,prod:3},
+};
+const RES={
+  timber:{name:'Timber',icon:'🪵',spawnOn:['forest'],           rarity:.10,cMin:3,cMax:7,ppt:3},
+  stone: {name:'Stone', icon:'🪨',spawnOn:['hills','mountain'], rarity:.10,cMin:3,cMax:6,ppt:3},
+  iron:  {name:'Iron',  icon:'⬟',spawnOn:['hills','mountain','plains'],rarity:.045,cMin:2,cMax:4,ppt:2},
+  copper:{name:'Copper',icon:'◈',spawnOn:['hills','plains','desert'],  rarity:.045,cMin:2,cMax:4,ppt:2},
+};
+const FCOLS=['#c0392b','#e67e22','#f1c40f','#27ae60','#16a085','#2980b9','#8e44ad','#2c3e50','#7f8c8d','#1a1208','#ecf0f1','#795548'];
 
-function showTitleScreen() {
-  document.getElementById('screen-title').classList.remove('hidden');
-  document.getElementById('screen-create').classList.add('hidden');
+// ═══════════════════════════════════════════
+// MAP ENGINE
+// ═══════════════════════════════════════════
+const TILE=18,COLS=120,ROWS=60;
+let canvas,ctx,wrap;
+let cam={x:0,y:0,scale:1,drag:false,lx:0,ly:0};
+let grid=[];
+let inkMode=false,inkPaint=false;
+let pCol='#c0392b',pGov='tribal';
+let cbPaint=null,cbHover=null;
+
+const SPAWNS=[
+  [.14,.30],[.17,.34],[.20,.40],[.13,.44],[.22,.46],
+  [.24,.55],[.27,.62],[.22,.58],[.25,.68],[.28,.64],
+  [.46,.24],[.48,.27],[.50,.25],[.45,.29],[.52,.28],
+  [.44,.33],[.49,.31],[.47,.22],[.54,.23],
+  [.48,.42],[.50,.50],[.52,.55],[.46,.47],[.54,.43],
+  [.49,.60],[.51,.64],[.48,.53],
+  [.56,.35],[.58,.37],[.60,.33],
+  [.62,.23],[.65,.27],[.68,.29],[.72,.31],[.75,.33],
+  [.70,.21],[.78,.27],[.64,.33],[.80,.23],[.74,.25],
+  [.66,.41],[.68,.45],[.70,.43],[.72,.41],
+  [.74,.45],[.76,.43],[.78,.47],
+  [.80,.61],[.84,.59],[.82,.65],[.78,.63],
+  [.60,.17],[.65,.15],[.70,.15],[.75,.17],
+  [.62,.29],[.64,.27],
+];
+
+function initMap(c,w){
+  canvas=c;ctx=canvas.getContext('2d');wrap=w;
+  resMap();buildGrid();centerCam();bindMap();redraw();
 }
-function showCreateScreen() {
+function resMap(){canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;}
+function centerCam(){
+  cam.scale=Math.max(canvas.width/(COLS*TILE),canvas.height/(ROWS*TILE))*.92;
+  cam.x=(canvas.width-COLS*TILE*cam.scale)/2;
+  cam.y=(canvas.height-ROWS*TILE*cam.scale)/2;
+}
+function noise(cols,rows,seed){
+  let s=seed;
+  const rng=()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;};
+  const raw=Array.from({length:rows},()=>Array.from({length:cols},rng));
+  const out=Array.from({length:rows},()=>new Array(cols).fill(0));
+  const r=4;
+  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+    let sum=0,cnt=0;
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const ny=y+dy,nx=x+dx;if(ny>=0&&ny<rows&&nx>=0&&nx<cols){sum+=raw[ny][nx];cnt++;}}
+    out[y][x]=sum/cnt;
+  }
+  return out;
+}
+function buildGrid(){
+  const h=noise(COLS,ROWS,42),t=noise(COLS,ROWS,99);
+  grid=[];
+  for(let r=0;r<ROWS;r++){
+    grid[r]=[];
+    const lat=Math.abs((r/ROWS)-.5)*2;
+    for(let c=0;c<COLS;c++){
+      const e=h[r][c],tp=1-lat*.85-e*.2+t[r][c]*.1;
+      let lid;
+      if(e<.32)lid='ocean';
+      else if(e<.38)lid='coast';
+      else if(e>.80)lid='mountain';
+      else if(tp<.22)lid='tundra';
+      else if(tp>.85&&e<.65)lid='desert';
+      else if(e>.65)lid='hills';
+      else if(Math.random()<.38)lid='forest';
+      else lid='plains';
+      grid[r][c]={r,c,land:LAND[lid],resource:null,owner:null,cityName:null,isCapital:false,hasBuilder:false};
+    }
+  }
+  placeRes();
+}
+function placeRes(){
+  for(const[rid,res]of Object.entries(RES)){
+    const attempts=Math.floor(COLS*ROWS*res.rarity/res.cMin);
+    for(let a=0;a<attempts;a++){
+      const cr=Math.floor(Math.random()*ROWS),cc=Math.floor(Math.random()*COLS);
+      const tile=grid[cr]?.[cc];
+      if(!tile||!res.spawnOn.includes(tile.land.id))continue;
+      const sz=res.cMin+Math.floor(Math.random()*(res.cMax-res.cMin));
+      const vis=[[cr,cc]];tile.resource=rid;
+      for(let i=1;i<sz;i++){
+        const[pr,pc]=vis[Math.floor(Math.random()*vis.length)];
+        const dirs=[[-1,0],[1,0],[0,-1],[0,1]].sort(()=>Math.random()-.5);
+        for(const[dr,dc]of dirs){
+          const nr=pr+dr,nc=pc+dc;
+          if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!grid[nr][nc].resource&&res.spawnOn.includes(grid[nr][nc].land.id)){
+            grid[nr][nc].resource=rid;vis.push([nr,nc]);break;
+          }
+        }
+      }
+    }
+  }
+}
+function placeCapital(city,color,govId){
+  pCol=color;pGov=govId;
+  let sp=null;
+  for(let a=0;a<40;a++){const[nx,ny]=SPAWNS[Math.floor(Math.random()*SPAWNS.length)];const r=Math.floor(ny*ROWS),c=Math.floor(nx*COLS);if(grid[r]?.[c]?.land?.claim){sp={r,c};break;}}
+  if(!sp)sp={r:30,c:60};
+  for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){const nr=sp.r+dr,nc=sp.c+dc;if(grid[nr]?.[nc]?.land?.claim)grid[nr][nc].owner='player';}
+  grid[sp.r][sp.c].cityName=city;grid[sp.r][sp.c].isCapital=true;grid[sp.r][sp.c].owner='player';
+  panTo(sp.r,sp.c);redraw();return sp;
+}
+function panTo(r,c){cam.x=canvas.width/2-(c*TILE+TILE/2)*cam.scale;cam.y=canvas.height/2-(r*TILE+TILE/2)*cam.scale;clampC();}
+function setInkMode(on){inkMode=on;wrap.style.cursor=on?'crosshair':'grab';}
+function inkCost(tile){return GOVS[pGov].inkCosts[tile.land.id]??2;}
+function tryPaint(r,c){
+  const tile=grid[r]?.[c];
+  if(!tile||tile.owner==='player'||!tile.land.claim)return;
+  const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+  if(!dirs.some(([dr,dc])=>grid[r+dr]?.[c+dc]?.owner==='player'))return;
+  if(cbPaint)cbPaint(tile,inkCost(tile));
+}
+function claimTile(r,c){if(grid[r]?.[c]){grid[r][c].owner='player';redraw();}}
+function autoExpand(amt){
+  const cands=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(grid[r][c].owner!=='player')continue;
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+      const nr=r+dr,nc=c+dc;
+      if(grid[nr]?.[nc]?.land?.claim&&grid[nr][nc].owner!=='player')cands.push({r:nr,c:nc,cost:inkCost(grid[nr][nc])});
+    });
+  }
+  cands.sort((a,b)=>a.cost-b.cost);
+  let used=0;
+  for(const t of cands){if(used+t.cost>amt)break;grid[t.r][t.c].owner='player';used+=t.cost;}
+  redraw();
+}
+function countTiles(){let n=0;for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r][c].owner==='player')n++;return n;}
+function activeRes(){
+  const res={};
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const t=grid[r][c];if(t.owner==='player'&&t.resource&&t.hasBuilder)res[t.resource]=(res[t.resource]||0)+1;}
+  return res;
+}
+function clampC(){
+  cam.x=Math.max(canvas.width-COLS*TILE*cam.scale-20,Math.min(20,cam.x));
+  cam.y=Math.max(canvas.height-ROWS*TILE*cam.scale-20,Math.min(20,cam.y));
+}
+function s2t(sx,sy){
+  const c=Math.floor((sx-cam.x)/cam.scale/TILE),r=Math.floor((sy-cam.y)/cam.scale/TILE);
+  return(r>=0&&r<ROWS&&c>=0&&c<COLS)?grid[r][c]:null;
+}
+function bindMap(){
+  wrap.addEventListener('mousedown',e=>{
+    if(inkMode){inkPaint=true;const rc=wrap.getBoundingClientRect();const t=s2t(e.clientX-rc.left,e.clientY-rc.top);if(t)tryPaint(t.r,t.c);}
+    else{cam.drag=true;cam.lx=e.clientX;cam.ly=e.clientY;}
+  });
+  window.addEventListener('mouseup',()=>{cam.drag=false;inkPaint=false;});
+  window.addEventListener('mousemove',e=>{
+    const rc=wrap.getBoundingClientRect();const sx=e.clientX-rc.left,sy=e.clientY-rc.top;
+    if(cam.drag&&!inkMode){cam.x+=e.clientX-cam.lx;cam.y+=e.clientY-cam.ly;cam.lx=e.clientX;cam.ly=e.clientY;clampC();redraw();}
+    if(inkMode&&inkPaint){const t=s2t(sx,sy);if(t)tryPaint(t.r,t.c);}
+    const t=s2t(sx,sy);if(cbHover)cbHover(t,e);
+  });
+  wrap.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rc=wrap.getBoundingClientRect();const mx=e.clientX-rc.left,my=e.clientY-rc.top;
+    const ns=Math.max(.4,Math.min(5,cam.scale*(e.deltaY>0?.88:1.14)));
+    cam.x=mx-(mx-cam.x)*(ns/cam.scale);cam.y=my-(my-cam.y)*(ns/cam.scale);
+    cam.scale=ns;clampC();redraw();
+  },{passive:false});
+  wrap.addEventListener('mouseleave',()=>{inkPaint=false;if(cbHover)cbHover(null,null);});
+}
+function redraw(){
+  if(!canvas)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();ctx.translate(cam.x,cam.y);ctx.scale(cam.scale,cam.scale);
+  const sc=Math.max(0,Math.floor(-cam.x/(TILE*cam.scale)));
+  const ec=Math.min(COLS,Math.ceil((-cam.x+canvas.width)/(TILE*cam.scale))+1);
+  const sr=Math.max(0,Math.floor(-cam.y/(TILE*cam.scale)));
+  const er=Math.min(ROWS,Math.ceil((-cam.y+canvas.height)/(TILE*cam.scale))+1);
+  // Tiles
+  for(let r=sr;r<er;r++)for(let c=sc;c<ec;c++){
+    const tile=grid[r][c];const x=c*TILE,y=r*TILE;
+    ctx.fillStyle=tile.land.color;ctx.fillRect(x,y,TILE,TILE);
+    if(tile.owner==='player'){ctx.fillStyle=pCol+'2a';ctx.fillRect(x,y,TILE,TILE);}
+  }
+  // Grid
+  if(cam.scale>=1.1){ctx.strokeStyle='rgba(0,0,0,.07)';ctx.lineWidth=.5;for(let r=sr;r<er;r++)for(let c=sc;c<ec;c++)ctx.strokeRect(c*TILE,r*TILE,TILE,TILE);}
+  // Resources
+  if(cam.scale>=.7){
+    const fs=Math.max(8,Math.min(13,TILE*.62));ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    for(let r=sr;r<er;r++)for(let c=sc;c<ec;c++){const t=grid[r][c];if(t.resource)ctx.fillText(RES[t.resource].icon,c*TILE+TILE/2,r*TILE+TILE/2);}
+  }
+  // Borders
+  ctx.lineWidth=2;
+  for(let r=sr;r<er;r++)for(let c=sc;c<ec;c++){
+    const t=grid[r][c];if(t.owner!=='player')continue;
+    const x=c*TILE,y=r*TILE;
+    [[-1,0,x,y,x+TILE,y],[1,0,x,y+TILE,x+TILE,y+TILE],[0,-1,x,y,x,y+TILE],[0,1,x+TILE,y,x+TILE,y+TILE]].forEach(([dr,dc,...p])=>{
+      if(grid[r+dr]?.[c+dc]?.owner!=='player'){ctx.strokeStyle=pCol+'bb';ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(p[2],p[3]);ctx.stroke();}
+    });
+  }
+  // Cities
+  for(let r=sr;r<er;r++)for(let c=sc;c<ec;c++){
+    const t=grid[r][c];if(!t.cityName)continue;
+    const x=c*TILE+TILE/2,y=r*TILE+TILE/2;
+    ctx.beginPath();ctx.arc(x,y,TILE*.34,0,Math.PI*2);
+    ctx.fillStyle='#f2e8d0';ctx.fill();ctx.strokeStyle=pCol;ctx.lineWidth=1.5;ctx.stroke();
+    if(t.isCapital)drawStar(x,y,TILE*.27,TILE*.13,5);
+    if(cam.scale>=.85){ctx.fillStyle='#1a1208';ctx.font=`bold ${Math.max(7,TILE*.5)}px "Cinzel",serif`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(t.cityName,x,y+TILE*.42);}
+  }
+  ctx.restore();
+}
+function drawStar(cx,cy,oR,iR,pts){
+  ctx.beginPath();
+  for(let i=0;i<pts*2;i++){const r=i%2===0?oR:iR,a=(i*Math.PI)/pts-Math.PI/2;i===0?ctx.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a)):ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));}
+  ctx.closePath();ctx.fillStyle='#d4a017';ctx.fill();ctx.strokeStyle='#1a1208';ctx.lineWidth=.5;ctx.stroke();
+}
+
+// ═══════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════
+let GS={
+  started:false,turn:0,year:-3000,yPT:50,
+  gold:100,food:80,pop:200,mil:20,prod:0,research:0,
+  stability:75,unity:80,
+  incG:8,incF:6,incM:1,incP:2,
+  cities:[],tiles:0,resources:{},breaks:[],
+  gov:null,nationName:'',capName:'',colors:[],
+  ink:0,inkMax:18,events:[],
+};
+
+function startGame(nn,cn,gid,cols){
+  const gov=GOVS[gid];
+  GS.gov=gov;GS.nationName=nn;GS.capName=cn;GS.colors=cols;
+  GS.stability=gid==='kingship'?80:gid==='polyarchy'?70:60;
+  GS.incG=Math.round(8*gov.goldMult);
+  GS.cities=[{name:cn,isCapital:true,loyalty:90,pop:200}];
+  GS.ink=gov.inkPerTurn;GS.inkMax=gov.inkMax;
+  GS.started=true;GS.turn=1;GS.year=-3000;
+  log(`The age of ${nn} has begun. ${cn} rises from the earth.`,'event');
+  log(`Government: ${gov.name}. ${{'tribal':'The elders speak.','kingship':'The crown is absolute.','polyarchy':'The council deliberates.'}[gid]}`,'event');
+  log(gov.decree?'Issue a Royal Decree to gain expansion ink.':`You have ${GS.ink} expansion ink — paint your borders!`,'event');
+  updUI();
+}
+
+function endTurn(){
+  if(!GS.started)return;
+  GS.turn++;GS.year+=GS.yPT;
+  GS.tiles=countTiles();GS.resources=activeRes();
+  let bG=0,bM=0,bP=0;
+  for(const[rid,cnt]of Object.entries(GS.resources)){
+    if(rid==='timber'||rid==='stone')bP+=cnt*RES[rid].ppt;
+    if(rid==='iron')bM+=cnt*RES[rid].ppt;
+    if(rid==='copper')bG+=cnt*RES[rid].ppt;
+  }
+  let tF=0,tG=0;
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const t=grid[r][c];if(t.owner!=='player')continue;tF+=t.land.food*.08;tG+=t.land.gold*.06;}
+  GS.incG=Math.round(8*GS.gov.goldMult+bG+tG);
+  GS.incF=Math.round(6+tF);GS.incP=Math.round(2+bP);GS.incM=Math.round(1+bM);
+  GS.gold+=GS.incG;GS.food+=GS.incF;GS.prod+=GS.incP;GS.mil+=GS.incM;
+  GS.pop+=Math.max(0,Math.floor(GS.food/25));GS.research+=2;
+  const distP=Math.max(0,(GS.tiles/30-1)*.5),fundP=GS.gold<20?4:0;
+  GS.stability=Math.max(0,Math.min(100,GS.stability-GS.gov.stabilityDecay-distP-fundP));
+  GS.unity=Math.max(0,GS.unity-.2*Math.max(1,GS.cities.length*.5));
+  refillInk();rollEvent();checkBreaks();
+  if(GS.turn===GS.gov.modernAt){
+    log(GS.stability>=60?'🌅 ERA CHANGE: A new form of governance beckons.':'🔥 ERA CHANGE: Instability has shattered the old ways.',GS.stability>=60?'event':'warning');
+    if(GS.stability<60)GS.stability=40;
+  }
+  updUI();
+}
+
+function refillInk(){
+  const g=GS.gov;
+  if(g.decree)return;
+  if(g.inkSave){GS.ink=Math.min(g.inkMax,GS.ink+g.inkPerTurn);}
+  else{
+    if(GS.ink>2&&g.autoExpand){const amt=Math.floor(GS.ink*g.autoRate);if(amt>0){autoExpand(amt);log('Your people spread outward on their own.','event');}}
+    GS.ink=g.inkPerTurn;
+  }
+}
+
+function doDecree(){
+  if(!GS.gov.decree)return;
+  if(GS.gold<40){toast('Need 40 gold for a Royal Decree.');return;}
+  GS.gold-=40;GS.ink=Math.min(GS.gov.inkMax,GS.ink+GS.gov.inkMax);
+  log('⚜ Royal Decree issued. Expansion ink granted.','event');updUI();toast('Royal Decree! Paint your new borders.');
+}
+
+function onPaintCb(tile,cost){
+  if(GS.ink<cost){toast(`Need ${cost} ink — only ${Math.floor(GS.ink)} left.`);return;}
+  GS.ink-=cost;claimTile(tile.r,tile.c);GS.tiles++;
+  if(tile.resource)log(`✦ New territory has ${RES[tile.resource].name}! Place a Builder to extract it.`,'event');
+  updInk();
+}
+
+function doRecruit(type){
+  const costs={trader:{gold:30,prod:0},builder:{gold:20,prod:10}};
+  const c=costs[type];
+  if(GS.gold<c.gold){toast(`Need ${c.gold} gold.`);return;}
+  if(GS.prod<c.prod){toast(`Need ${c.prod} production.`);return;}
+  GS.gold-=c.gold;GS.prod-=c.prod;
+  log(`${type==='trader'?'🐪':'🪚'} A new ${type} has been recruited.`,'event');updUI();toast(`${type.charAt(0).toUpperCase()+type.slice(1)} recruited!`);
+}
+
+function rollEvent(){
+  if(Math.random()>.15)return;
+  const isG=Math.random()<.55;
+  const good=[
+    {t:'A bountiful harvest — food replenished.',f:()=>{GS.food+=30;GS.stability+=3;}},
+    {t:'Merchants arrive bearing coin.',f:()=>{GS.gold+=25;}},
+    {t:'A period of peace. People are content.',f:()=>{GS.stability+=5;}},
+    {t:'Craftsmen improve tool-making.',f:()=>{GS.prod+=15;}},
+    {t:'Scouts discover fertile lands nearby.',f:()=>{GS.ink=Math.min(GS.gov.inkMax,GS.ink+4);}},
+  ];
+  const bad=[
+    {t:'Drought strikes. Food dwindles.',f:()=>{GS.food=Math.max(0,GS.food-25);GS.stability-=4;}},
+    {t:'Bandits raid the trade routes.',f:()=>{GS.gold=Math.max(0,GS.gold-20);}},
+    {t:'Discontent spreads among the people.',f:()=>{GS.stability-=6;}},
+    {t:'Disease sweeps through settlements.',f:()=>{GS.pop=Math.max(10,GS.pop-30);GS.stability-=3;}},
+    {t:'A harsh winter damages crops.',f:()=>{GS.food=Math.max(0,GS.food-20);GS.stability-=3;}},
+  ];
+  const pool=isG?good:bad;const ev=pool[Math.floor(Math.random()*pool.length)];ev.f();
+  log((isG?'✦ ':'⚠ ')+ev.t,isG?'event':'warning');
+}
+
+function checkBreaks(){
+  for(let i=GS.cities.length-1;i>=0;i--){
+    const city=GS.cities[i];if(city.isCapital)continue;
+    city.loyalty=Math.max(0,city.loyalty-1.2-(GS.gold<10?3:0));
+    let ch=0;
+    if(city.loyalty<30)ch+=.15;else if(city.loyalty<50)ch+=.06;
+    if(GS.stability<GS.gov.breakoffAt)ch+=.08;
+    if(GS.gold<10)ch+=.05;if(GS.unity<40)ch+=.04;
+    if(Math.random()<ch){
+      const nm=city.name+' '+['Republic','Chiefdom','Kingdom','Commune','Alliance'][Math.floor(Math.random()*5)];
+      GS.cities.splice(i,1);GS.stability-=10;GS.unity-=8;GS.breaks.push({name:nm});
+      log(`⚔ BREAKAWAY: ${city.name} declares independence! The ${nm} is born.`,'warning');
+    }
+  }
+}
+
+function fmtY(y){return y<0?Math.abs(y)+' BCE':y+' CE';}
+function log(text,type='normal'){GS.events.unshift({text,type,year:GS.year});renderLog();}
+function renderLog(){
+  const el=document.getElementById('evlog');if(!el)return;
+  el.innerHTML=GS.events.slice(0,30).map(e=>`<div class="litem ${e.type}"><span class="lyr">${fmtY(e.year)}</span>${e.text}</div>`).join('');
+}
+function updInk(){
+  const pct=Math.min(100,(GS.ink/(GS.gov?.inkMax||18))*100);
+  document.getElementById('inkfill').style.width=pct+'%';
+  document.getElementById('inkcnt').textContent=Math.floor(GS.ink);
+}
+function setEl(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function setFlag(id,cols){const e=document.getElementById(id);if(!e)return;e.innerHTML=cols.map(c=>`<div class="fstr" style="background:${c}"></div>`).join('');}
+function updUI(){
+  if(!GS.started)return;
+  setEl('nname',GS.nationName);setEl('ngov',GS.gov.name);setEl('yrdisp',fmtY(GS.year));
+  setFlag('tflag',GS.colors);
+  setEl('c-gold',Math.floor(GS.gold));setEl('c-food',Math.floor(GS.food));
+  setEl('c-pop',Math.floor(GS.pop));setEl('c-mil',Math.floor(GS.mil));setEl('c-prod',Math.floor(GS.prod));
+  updInk();
+  const st=Math.floor(GS.stability);setEl('s-stab',st+'%');
+  const sf=document.getElementById('stfill');if(sf){sf.style.width=st+'%';sf.style.background=st>60?'#4a8a4a':st>35?'#c8a030':'#8b1a1a';}
+  setEl('s-unity',Math.floor(GS.unity)+'%');setEl('s-cities',GS.cities.length);
+  setEl('s-tiles',GS.tiles);setEl('s-breaks',GS.breaks.length);
+  setEl('s-goldI','+'+GS.incG);setEl('s-foodI','+'+GS.incF);setEl('s-prodI','+'+GS.incP);setEl('s-res',Math.floor(GS.research));
+  const re=document.getElementById('s-activeRes');
+  if(re){const en=Object.entries(GS.resources);re.innerHTML=en.length?en.map(([id,n])=>`<div class="sbstat"><span>${RES[id].icon} ${RES[id].name}</span><span class="sbv">${n}</span></div>`).join(''):'<span style="font-size:9px;font-style:italic;color:var(--ink-light);">No builders deployed</span>';}
+  const db=document.getElementById('decbtn');if(db)db.style.display=GS.gov.decree?'block':'none';
+  renderLog();
+}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
+
+// ═══════════════════════════════════════════
+// UI CONTROLLER
+// ═══════════════════════════════════════════
+let selG=null,selC=['#c0392b','#f1c40f','#2980b9'],inkOn=false;
+
+function showTitle(){document.getElementById('screen-title').classList.remove('hidden');document.getElementById('screen-create').classList.add('hidden');}
+function showCreate(){
   document.getElementById('screen-title').classList.add('hidden');
   document.getElementById('screen-create').classList.remove('hidden');
-  initColorPickers();
+  initCP();
 }
-function showGameScreen() {
+function selGov(id){
+  selG=id;document.querySelectorAll('.gcard').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('gc-'+id).classList.add('sel');valForm();
+}
+function initCP(){
+  [['p',0],['s',1],['a',2]].forEach(([slot,idx])=>{
+    const wr=document.getElementById('cp-'+slot);wr.innerHTML='';
+    FCOLS.forEach(color=>{
+      const sw=document.createElement('div');sw.className='csw'+(selC[idx]===color?' sel':'');sw.style.background=color;
+      sw.onclick=()=>{selC[idx]=color;document.querySelectorAll(`#cp-${slot} .csw`).forEach(s=>s.classList.remove('sel'));sw.classList.add('sel');updPrev();};
+      wr.appendChild(sw);
+    });
+  });updPrev();
+}
+function updPrev(){
+  const name=document.getElementById('inp-nation').value.trim();
+  const fp=document.getElementById('fprev');fp.querySelectorAll('.fstr').forEach((s,i)=>s.style.background=selC[i]);
+  document.getElementById('prevnm').textContent=name||'—';valForm();
+}
+function valForm(){
+  const ok=document.getElementById('inp-nation').value.trim().length>0&&document.getElementById('inp-cap').value.trim().length>0&&selG!==null;
+  const btn=document.getElementById('btn-begin');btn.style.opacity=ok?'1':'.4';btn.style.pointerEvents=ok?'auto':'none';
+}
+function beginGame(){
+  const name=document.getElementById('inp-nation').value.trim();
+  const cap=document.getElementById('inp-cap').value.trim();
+  if(!name||!cap||!selG)return;
   document.getElementById('screen-create').classList.add('hidden');
-  const gs = document.getElementById('screen-game');
-  gs.classList.remove('hidden');
-  gs.style.display = 'flex';
+  const gs=document.getElementById('screen-game');gs.classList.remove('hidden');gs.style.display='flex';
+  setTimeout(()=>{
+    initMap(document.getElementById('mapcanvas'),document.getElementById('mapwrap'));
+    cbPaint=(tile,cost)=>onPaintCb(tile,cost);
+    cbHover=(tile,e)=>{
+      const tt=document.getElementById('mtt'),hi=document.getElementById('hinfo');
+      if(tile){
+        const rn=tile.resource?` · ${RES[tile.resource].icon} ${RES[tile.resource].name}`:'';
+        hi.textContent=`${tile.land.name}${rn} · ${tile.owner==='player'?'Your Territory':'Unclaimed'}`;
+        if(inkOn&&tile.land.claim&&tile.owner!=='player'){
+          tt.style.display='block';tt.style.left=(e.clientX+14)+'px';tt.style.top=(e.clientY-10)+'px';
+          document.getElementById('ttn').textContent=tile.land.name+(tile.resource?' · '+RES[tile.resource].icon:'');
+          document.getElementById('ttb').innerHTML=`<div class="ttr">Ink cost: ${GOVS[selG].inkCosts[tile.land.id]??2}</div><div class="ttr">Food:+${tile.land.food} Gold:+${tile.land.gold}</div>`;
+        } else tt.style.display='none';
+      } else {tt.style.display='none';hi.textContent=inkOn?'🖋 Paint Mode — click and drag to claim territory':'Pan · Scroll to zoom · Paint Borders to expand';}
+    };
+    window.addEventListener('resize',()=>{resMap();redraw();});
+    placeCapital(cap,selC[0],selG);
+    startGame(name,cap,selG,selC);
+    toast('Your civilization begins! Toggle Paint Borders to expand.');
+  },80);
 }
-
-// Government selection
-function selectGov(id) {
-  selectedGov = id;
-  document.querySelectorAll('.gov-card').forEach(c=>c.classList.remove('selected'));
-  document.getElementById('gov-'+id).classList.add('selected');
-  validateForm();
+function toggleInk(){
+  inkOn=!inkOn;setInkMode(inkOn);
+  const btn=document.getElementById('ibtn');btn.classList.toggle('on',inkOn);
+  btn.textContent=inkOn?'✏ Painting…':'✏ Paint Borders';
+  document.getElementById('hinfo').textContent=inkOn?'🖋 Paint Mode — click and drag on land to claim':'Pan · Scroll to zoom · Paint Borders to expand';
 }
-
-// Color pickers
-function initColorPickers() {
-  ['primary','secondary','accent'].forEach((slot, idx) => {
-    const wrap = document.getElementById('colors-'+slot);
-    wrap.innerHTML = '';
-    FLAG_COLORS.forEach(color => {
-      const sw = document.createElement('div');
-      sw.className = 'color-swatch' + (selectedColors[idx]===color?' selected':'');
-      sw.style.background = color;
-      sw.onclick = () => {
-        selectedColors[idx] = color;
-        document.querySelectorAll(`#colors-${slot} .color-swatch`).forEach(s=>s.classList.remove('selected'));
-        sw.classList.add('selected');
-        updatePreview();
-      };
-      wrap.appendChild(sw);
-    });
-  });
-  updatePreview();
-}
-
-function updatePreview() {
-  const name = document.getElementById('input-nation-name').value.trim();
-  const fp   = document.getElementById('flag-preview-big');
-  fp.querySelectorAll('.flag-stripe').forEach((s,i)=>s.style.background=selectedColors[i]);
-  document.getElementById('nation-preview-name').textContent = name||'—';
-  validateForm();
-}
-
-function validateForm() {
-  const name    = document.getElementById('input-nation-name').value.trim();
-  const capital = document.getElementById('input-capital-name').value.trim();
-  const btn     = document.getElementById('btn-begin');
-  const valid   = name.length>0 && capital.length>0 && selectedGov!==null;
-  btn.style.opacity      = valid?'1':'0.4';
-  btn.style.pointerEvents = valid?'auto':'none';
-}
-
-// Begin game
-function beginGame() {
-  const name    = document.getElementById('input-nation-name').value.trim();
-  const capital = document.getElementById('input-capital-name').value.trim();
-  if (!name||!capital||!selectedGov) return;
-
-  showGameScreen();
-
-  setTimeout(() => {
-    // Init map
-    MapEngine.init(document.getElementById('map-canvas'), document.getElementById('map-wrap'));
-    MapEngine.setPlayerColor(selectedColors[0]);
-    MapEngine.setPlayerGov(selectedGov);
-
-    // Wire ink painting
-    MapEngine.setOnTilePainted((tile, cost) => Game.handleTilePaint(tile, cost));
-
-    // Wire hover tooltip
-    MapEngine.setOnTileHover((tile, e) => {
-      const tt = document.getElementById('map-tooltip');
-      const hi = document.getElementById('hover-info');
-      if (tile) {
-        const resName = tile.resource ? ` · ${RESOURCES[tile.resource].icon} ${RESOURCES[tile.resource].name}` : '';
-        const owner   = tile.owner==='player' ? 'Your Territory' : 'Unclaimed';
-        hi.textContent = `${tile.land.name}${resName} · ${owner}`;
-        if (inkModeActive && tile.land.claimable && tile.owner!=='player') {
-          const cost = GOVERNMENTS[selectedGov].inkCosts[tile.land.id]??2;
-          tt.style.display = 'block';
-          tt.style.left    = (e.clientX+14)+'px';
-          tt.style.top     = (e.clientY-10)+'px';
-          document.getElementById('tt-name').textContent = tile.land.name + (tile.resource?' · '+RESOURCES[tile.resource].name:'');
-          document.getElementById('tt-body').innerHTML =
-            `<div class="tt-row">Ink cost: ${cost}</div>
-             <div class="tt-row">Food: +${tile.land.foodMod} · Gold: +${tile.land.goldMod}</div>
-             ${resName?`<div class="tt-row">${RESOURCES[tile.resource].effect}</div>`:''}`;
-        } else { tt.style.display='none'; }
-      } else {
-        tt.style.display='none';
-        hi.textContent = inkModeActive
-          ? '🖋 Paint Mode — click and drag to claim territory'
-          : 'Pan with mouse · Scroll to zoom · Toggle Paint Borders to expand';
-      }
-    });
-
-    window.addEventListener('resize', () => MapEngine.resize());
-
-    // Place capital & start game
-    MapEngine.placePlayerCapital(capital, selectedColors[0], selectedGov);
-    Game.startGame(name, capital, selectedGov, selectedColors);
-    showToast('Your civilization begins. Toggle "Paint Borders" to expand!');
-  }, 80);
-}
-
-// Ink mode toggle
-function toggleInkMode() {
-  inkModeActive = !inkModeActive;
-  MapEngine.setInkMode(inkModeActive);
-  const btn = document.getElementById('btn-ink-toggle');
-  btn.classList.toggle('active', inkModeActive);
-  btn.textContent = inkModeActive ? '✏ Painting…' : '✏ Paint Borders';
-  const hi = document.getElementById('hover-info');
-  hi.textContent = inkModeActive
-    ? '🖋 Paint Mode active — click and drag on land to claim it'
-    : 'Paint mode off — drag to pan, scroll to zoom';
-}
-
-// End turn
-function handleEndTurn() {
-  // Turn off ink mode each turn
-  if (inkModeActive) toggleInkMode();
-  Game.endTurn();
-  showToast(formatYearDisplay());
-}
-
-function formatYearDisplay() {
-  const s = Game.getState();
-  return s.year<0 ? Math.abs(s.year)+' BCE' : s.year+' CE';
-}
+function doEndTurn(){if(inkOn)toggleInk();endTurn();toast(fmtY(GS.year));}
 </script>
 </body>
 </html>
